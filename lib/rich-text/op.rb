@@ -1,74 +1,67 @@
 module RichText
   class Op
+    include Comparable
+
     TYPES = [:insert, :retain, :delete]
     EMBED_CHAR = '!'
-    InvalidType = Class.new(StandardError)
 
-    attr_accessor :attributes
+    attr_reader :type, :value, :attributes
 
-    def initialize(type, arg, attributes = nil)
-      raise InvalidType.new(type) unless TYPES.include?(type)
+    def initialize(type, value, attributes = nil)
+      if !TYPES.include?(type)
+        raise ArgumentError.new("#{type} is not a valid op type")
+      end
+
+      if [:retain, :delete].include?(type) && !value.is_a?(Numeric)
+        raise ArgumentError.new("value must be a number when type is #{type}")
+      end
 
       @type = type
-      @arg = arg
-      @attributes = attributes
-    end
-
-    def insert?(kind = Object)
-      @type == :insert && @arg.is_a?(Object)
-    end
-
-    def retain?
-      @type == :retain
-    end
-
-    def delete?
-      @type == :delete
+      @value = value.freeze
+      @attributes = attributes.freeze
     end
 
     def attributes?
-      !@attributes.nil? && !@attributes.empty?
+      !attributes.nil? && !attributes.empty?
     end
 
-    def insert
-      if @type == :insert
-        @arg
-      else
-        raise InvalidType.new(@type)
-      end
+    def insert?(kind = Object)
+      type == :insert && value.is_a?(kind)
+    end
+
+    def retain?
+      type == :retain
+    end
+
+    def delete?
+      type == :delete
     end
 
     def length
-      case @type
+      case type
       when :insert
-        @arg.is_a?(String) ? @arg.length : 1
+        value.is_a?(String) ? value.length : 1
       when :retain, :delete
-        @arg
+        value
       end
     end
 
     def slice(start = 0, len = length)
-      if start.is_a?(Range)
-        len = start.size
-        start = start.first
-      end
-
       if insert?(String)
-        Op.new(:insert, @arg.slice(start, len), @attributes)
+        Op.new(:insert, value.slice(start, len), attributes)
       elsif insert?
         unless start == 0 && len == 1
           raise ArgumentError.new("cannot subdivide a non-string insert")
         end
         dup
       else
-        Op.new(@type, [@arg - start, len].min, @attributes)
+        Op.new(type, [value - start, len].min, attributes)
       end
     end
-    alias_method :[], :slice
 
     def as_json
-      { @type => @arg }.tap do |json|
-        json[:attributes] = @attributes if attributes?
+      { type => value }.tap do |json|
+        json[:attributes] = attributes if attributes?
       end
     end
 
@@ -76,21 +69,19 @@ module RichText
       as_json.to_json
     end
 
-    def to_s
-      if insert?(String)
-        @arg
-      elsif insert?
-        EMBED_CHAR
-      else
-        raise InvalidType.new
-      end
+    def inspect(wrap = true)
+      str = "#{type}=#{value.inspect}"
+      str << " #{attributes.inspect}" if attributes?
+      wrap ? "#<#{self.class.name} #{str}>" : str
+    end
+    alias :to_s :inspect
+
+    def ==(other)
+      type == other.type && value == other.value && attributes == other.attributes
     end
 
-    def inspect
-      "#<#{self.class.name} #{@type}=#{@arg.inspect}".tap do |str|
-        str << " #{@attributes.inspect}" if attributes?
-        str << ">"
-      end
+    def <=>(other)
+      value <=> other.value if type == other.type
     end
   end
 end

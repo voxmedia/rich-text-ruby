@@ -2,8 +2,12 @@ module RichText
   class Iterator
     def initialize(ops)
       @ops = ops
-      @index = 0
-      @offset = 0
+      reset
+    end
+
+    def each(size = 1)
+      return enum_for(:each, size) unless block_given?
+      yield self.next(size) while next?
     end
 
     def peek
@@ -30,10 +34,15 @@ module RichText
           @offset += length
         end
 
-        next_op[offset, length]
+        next_op.slice(offset, length)
       else
         return Op.new(:retain, Float::INFINITY)
       end
+    end
+
+    def reset
+      @index = 0
+      @offset = 0
     end
   end
 end
