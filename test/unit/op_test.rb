@@ -1,17 +1,17 @@
 describe RichText::Op do
-  describe 'new' do
-    it 'raises ArgumentError if the first arg is invalid' do
-      proc { RichText::Op.new(:bogus, 1) }.must_raise ArgumentError
+  describe 'parse' do
+    it 'raises ArgumentError if invalid hash keys are provided' do
+      proc { RichText::Op.parse({ bogus: 1 }) }.must_raise ArgumentError
     end
 
-    it 'raises ArgumentError if a non-Fixnum is provided for retain or delete' do
-      proc { RichText::Op.new(:retain, 'bogus') }.must_raise ArgumentError
-      proc { RichText::Op.new(:delete, 'bogus') }.must_raise ArgumentError
-      RichText::Op.new(:retain, Float::INFINITY) # must not raise
+    it 'raises ArgumentError if a non-Integer is provided for retain or delete' do
+      proc { RichText::Op.parse({ retain: 'bogus' }) }.must_raise ArgumentError
+      proc { RichText::Op.parse({ delete: 'bogus' }) }.must_raise ArgumentError
+      RichText::Op.parse({ retain: 1 }) # must not raise
     end
 
     it 'raises ArgumentError if a non-Hash is provided as attributes' do
-      proc { RichText::Op.new(:insert, 'x', :bogus) }.must_raise ArgumentError
+      proc { RichText::Op.parse({ insert: 'x', attributes: :bogus }) }.must_raise ArgumentError
     end
   end
 
@@ -91,7 +91,7 @@ describe RichText::Op do
     it 'returns a dup when no args passed' do
       op = RichText::Op.new(:insert, 'abc')
       op.slice.must_equal op
-      op.slice.wont_be :eql?, op
+      op.slice.wont_be :equal?, op
     end
 
     it 'cannot split a non-string insert' do
@@ -122,13 +122,13 @@ describe RichText::Op do
     end
   end
 
-  describe 'as_json' do
+  describe 'to_h' do
     it 'omits attributes when not present' do
-      RichText::Op.new(:insert, 'abc').as_json.must_equal(:insert => 'abc')
+      RichText::Op.new(:insert, 'abc').to_h.must_equal(:insert => 'abc')
     end
 
     it 'includes attributes when present' do
-      RichText::Op.new(:insert, 'abc', { foo: true }).as_json.must_equal({
+      RichText::Op.new(:insert, 'abc', { foo: true }).to_h.must_equal({
         :insert => 'abc',
         :attributes => { :foo => true }
       })
@@ -172,37 +172,6 @@ describe RichText::Op do
 
     it 'returns false for differing attributes' do
       x.wont_equal y
-    end
-  end
-
-  describe '<=>' do
-    it 'returns nil for differing types' do
-      a = RichText::Op.new(:insert, 'abc')
-      b = RichText::Op.new(:retain, 3)
-      (a <=> b).must_be_nil
-    end
-
-    it 'compares inserts by value, ignoring attributes' do
-      a = RichText::Op.new(:insert, 'abc', { x: 100 })
-      b = RichText::Op.new(:insert, 'abc', { x: 2 })
-      (a <=> b).must_equal 0
-      b = RichText::Op.new(:insert, 'def', { x: 2 })
-      (a <=> b).must_equal -1
-    end
-
-    it 'compares retains by value, ignoring attributes' do
-      a = RichText::Op.new(:retain, 3, { x: 100 })
-      b = RichText::Op.new(:retain, 3, { x: 200 })
-      (a <=> b).must_equal 0
-      b = RichText::Op.new(:retain, 1, { x: 200 })
-      (a <=> b).must_equal 1
-    end
-
-    it 'compares deletes by value' do
-      a = RichText::Op.new(:delete, 3)
-      b = RichText::Op.new(:delete, 1)
-      (a <=> a).must_equal 0
-      (a <=> b).must_equal 1
     end
   end
 end

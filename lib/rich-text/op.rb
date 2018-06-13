@@ -25,17 +25,19 @@ module RichText
     def self.parse(data)
       data = data.to_h.with_indifferent_access
       type_keys = (data.keys & TYPES.map(&:to_s))
-
       if type_keys.length != 1
         raise ArgumentError.new("must be a Hash containing exactly one of the following keys: #{TYPES.inspect}")
       end
 
-      type = type_keys.first
+      type = type_keys.first.to_sym
       value = data[type]
-      attributes = data[:attributes]
-
       if [:retain, :delete].include?(type) && !value.is_a?(Integer)
         raise ArgumentError.new("value must be an Integer when type is #{type.inspect}")
+      end
+
+      attributes = data[:attributes]
+      if attributes && !attributes.is_a?(Hash)
+        raise ArgumentError.new("attributes must be a Hash")
       end
 
       self.new(type, value, attributes)
@@ -49,16 +51,16 @@ module RichText
     def initialize(type, value, attributes = nil)
       @type = type.to_sym
       @value = value.freeze
-      @attributes = attributes.freeze
+      @attributes = (attributes || {}).freeze
     end
 
-    # @return [Boolean] whether any attributes are present; `false` when attributes is either `nil` or empty, `true` otherwise.
+    # @return [Boolean] whether any attributes are present; `false` when attributes is empty, `true` otherwise.
     # @example
     #   RichText::Op.new(:insert, 'abc').attributes? # => false
     #   RichText::Op.new(:insert, 'abc', {}).attributes? # => false
     #   RichText::Op.new(:insert, 'abc', { bold: true }).attributes? # => true
     def attributes?
-      !attributes.nil? && !attributes.empty?
+      !attributes.empty?
     end
 
     # Returns whether type is `:insert`, and value is an instance of `kind`

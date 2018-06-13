@@ -45,15 +45,15 @@ describe RichText::Delta do
     end
   end
 
-  describe 'chop' do
+  describe 'chop!' do
     it 'returns self' do
-      subject.chop.must_be :eql?, subject
+      subject.chop!.must_be :equal?, subject
     end
 
     it 'removes the last op only if is a retain without attributes' do
-      subject.insert('abc').chop.inspect.must_equal '#<RichText::Delta [insert="abc"]>'
-      subject.retain(3, x: 1).chop.inspect.must_equal '#<RichText::Delta [insert="abc", retain=3 {:x=>1}]>'
-      subject.retain(10).chop.inspect.must_equal '#<RichText::Delta [insert="abc", retain=3 {:x=>1}]>'
+      subject.insert('abc').chop!.inspect.must_equal '#<RichText::Delta [insert="abc"]>'
+      subject.retain(3, x: 1).chop!.inspect.must_equal '#<RichText::Delta [insert="abc", retain=3 {:x=>1}]>'
+      subject.retain(10).chop!.inspect.must_equal '#<RichText::Delta [insert="abc", retain=3 {:x=>1}]>'
     end
   end
 
@@ -89,7 +89,7 @@ describe RichText::Delta do
     it 'without arguments, returns a clone' do
       delta = subject.slice
       subject.must_equal delta
-      subject.wont_be :eql?, delta
+      subject.wont_be :equal?, delta
     end
 
     it 'section of desired length and offset' do
@@ -137,14 +137,14 @@ describe RichText::Delta do
     it 'returns a copy concatenated with the argument' do
       subject.insert('abc')
       result = subject + subject
-      result.wont_be :eql?, subject
+      result.wont_be :equal?, subject
       result.inspect.must_equal '#<RichText::Delta [insert="abcabc"]>'
     end
   end
 
-  describe 'as_json' do
+  describe 'to_h' do
     it 'returns a hash with an :ops key' do
-      subject.insert('abc').retain(3, x: 1).delete(3).as_json.must_equal({
+      subject.insert('abc').retain(3, x: 1).delete(3).to_h.must_equal({
         :ops => [
           { :insert => 'abc' },
           { :retain => 3, :attributes => { :x => 1 } },
@@ -166,17 +166,6 @@ describe RichText::Delta do
   #     haystack.include?(subject.insert('bc').retain(1)).must_equal true
   #   end
   # end
-
-  describe '<=>' do
-    let(:a) { RichText::Delta.new.insert('abc') }
-    let(:b) { RichText::Delta.new.insert('def') }
-
-    it 'compares by op' do
-      (a <=> a).must_equal 0
-      (a <=> b).must_equal -1
-      (b <=> a).must_equal 1
-    end
-  end
 
   describe '=~' do
   end

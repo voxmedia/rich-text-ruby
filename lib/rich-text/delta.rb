@@ -71,42 +71,43 @@ module RichText
     # @param op [Op] the operation to add
     # @return [Delta] `self` for chainability
     def push(op)
-      index = -1
-      last_op = @ops[index]
+      index = @ops.length
+      last_op = @ops[index - 1]
 
       if last_op
         if last_op.delete? && op.delete?
-          @ops[index] = Op.new(:delete, last_op.value + op.value)
+          @ops[index - 1] = Op.new(:delete, last_op.value + op.value)
           return self
         end
 
         # Since it does not matter if we insert before or after deleting at the
         # same index, always prefer to insert first
         if last_op.delete? && op.insert?
-          delete_op = @ops.pop
-          last_op = @ops.last
+          index -= 1
+          last_op = @ops[index - 1]
           if !last_op
-            @ops.push(op, delete_op)
+            @ops.unshift(op)
             return self
           end
         end
 
         if last_op.attributes == op.attributes
           if last_op.insert?(String) && op.insert?(String)
-            @ops[index] = Op.new(:insert, last_op.value + op.value, last_op.attributes)
+            @ops[index - 1] = Op.new(:insert, last_op.value + op.value, last_op.attributes)
             return self
           elsif last_op.retain? && op.retain?
-            @ops[index] = Op.new(:retain, last_op.value + op.value, last_op.attributes)
+            @ops[index - 1] = Op.new(:retain, last_op.value + op.value, last_op.attributes)
             return self
           end
         end
-
-        if delete_op
-          @ops.push(delete_op)
-        end
       end
 
-      @ops.insert(index, op)
+      if index == @ops.length
+        @ops.push(op)
+      else
+        @ops[index, 0] = op
+      end
+
       return self
     end
     alias :<< :push
