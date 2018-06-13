@@ -1,6 +1,7 @@
 require 'diff-lcs'
 
 module RichText
+  # @api private
   class Diff
     attr_reader :chunks
 

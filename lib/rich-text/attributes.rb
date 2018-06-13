@@ -1,4 +1,5 @@
 module RichText
+  # @api private
   module Attributes
     class << self
       def compose(a, b, keep_nil)

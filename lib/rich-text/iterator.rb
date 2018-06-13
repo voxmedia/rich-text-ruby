@@ -1,4 +1,5 @@
 module RichText
+  # @api private
   class Iterator
     def initialize(ops)
       @ops = ops

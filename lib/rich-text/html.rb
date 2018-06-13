@@ -2,12 +2,13 @@ require 'delegate'
 require 'singleton'
 
 module RichText
+  # @todo Work in progress
   class HTML
     ConfigError = Class.new(StandardError)
 
     attr_reader :config
 
-    def self.render(delta)
+    def self.render(delta, options)
       new(RichText.config).render(delta)
     end
 
