@@ -1,149 +1,165 @@
 describe RichText::Op do
   describe 'parse' do
     it 'raises ArgumentError if invalid hash keys are provided' do
-      proc { RichText::Op.parse({ bogus: 1 }) }.must_raise ArgumentError
+      assert_raises(ArgumentError) { RichText::Op.parse({ bogus: 1 }) }
     end
 
     it 'raises ArgumentError if a non-Integer is provided for retain or delete' do
-      proc { RichText::Op.parse({ retain: 'bogus' }) }.must_raise ArgumentError
-      proc { RichText::Op.parse({ delete: 'bogus' }) }.must_raise ArgumentError
+      assert_raises(ArgumentError) { RichText::Op.parse({ retain: 'bogus' }) }
+      assert_raises(ArgumentError) { RichText::Op.parse({ delete: 'bogus' }) }
       RichText::Op.parse({ retain: 1 }) # must not raise
     end
 
     it 'raises ArgumentError if a non-Hash is provided as attributes' do
-      proc { RichText::Op.parse({ insert: 'x', attributes: :bogus }) }.must_raise ArgumentError
+      assert_raises(ArgumentError) { RichText::Op.parse({ insert: 'x', attributes: :bogus }) }
     end
   end
 
   describe 'attributes' do
     it 'returns what was set as the 3rd argument' do
       attrs = { foo: true }
-      RichText::Op.new(:retain, 1, attrs).attributes.must_equal attrs
+      assert_equal attrs, RichText::Op.new(:retain, 1, attrs).attributes
     end
 
     it 'returns {} if none were provided' do
-      RichText::Op.new(:retain, 1).attributes.must_equal({})
+      assert_equal ({}), RichText::Op.new(:retain, 1).attributes
     end
   end
 
   describe 'attributes?' do
     it 'returns true if there are any' do
-      RichText::Op.new(:retain, 1, { foo: true }).attributes?.must_equal true
+      assert_equal true, RichText::Op.new(:retain, 1, { foo: true }).attributes?
     end
 
     it 'returns false if there are none' do
-      RichText::Op.new(:retain, 1).attributes?.must_equal false
-      RichText::Op.new(:retain, 1, {}).attributes?.must_equal false
+      assert_equal false, RichText::Op.new(:retain, 1).attributes?
+      assert_equal false, RichText::Op.new(:retain, 1, {}).attributes?
     end
   end
 
   describe 'types' do
     it 'insert? returns true for inserts' do
-      RichText::Op.new(:insert, 'x').insert?.must_equal true
-      RichText::Op.new(:insert, 1).insert?.must_equal true
-      RichText::Op.new(:retain, 1).insert?.must_equal false
-      RichText::Op.new(:delete, 1).insert?.must_equal false
+      assert_equal true, RichText::Op.new(:insert, 'x').insert?
+      assert_equal true, RichText::Op.new(:insert, 1).insert?
+      assert_equal false, RichText::Op.new(:retain, 1).insert?
+      assert_equal false, RichText::Op.new(:delete, 1).insert?
     end
 
     it 'insert?(String) only returns true for strings' do
-      RichText::Op.new(:insert, 'x').insert?(String).must_equal true
-      RichText::Op.new(:insert, 1).insert?(String).must_equal false
+      assert_equal true, RichText::Op.new(:insert, 'x').insert?(String)
+      assert_equal false, RichText::Op.new(:insert, 1).insert?(String)
     end
 
     it 'retain? returns true for retains' do
-      RichText::Op.new(:retain, 1).retain?.must_equal true
-      RichText::Op.new(:insert, 1).retain?.must_equal false
-      RichText::Op.new(:delete, 1).retain?.must_equal false
+      assert_equal true, RichText::Op.new(:retain, 1).retain?
+      assert_equal false, RichText::Op.new(:insert, 1).retain?
+      assert_equal false, RichText::Op.new(:delete, 1).retain?
     end
 
     it 'delete? returns true for deletes' do
-      RichText::Op.new(:retain, 1).delete?.must_equal false
-      RichText::Op.new(:insert, 1).delete?.must_equal false
-      RichText::Op.new(:delete, 1).delete?.must_equal true
+      assert_equal false, RichText::Op.new(:retain, 1).delete?
+      assert_equal false, RichText::Op.new(:insert, 1).delete?
+      assert_equal true, RichText::Op.new(:delete, 1).delete?
     end
   end
 
   it 'value returns the 2nd argument' do
-    RichText::Op.new(:insert, 'abc').value.must_equal 'abc'
-    RichText::Op.new(:retain, 7).value.must_equal 7
-    RichText::Op.new(:delete, 4).value.must_equal 4
+    assert_equal 'abc', RichText::Op.new(:insert, 'abc').value
+    assert_equal 7, RichText::Op.new(:retain, 7).value
+    assert_equal 4, RichText::Op.new(:delete, 4).value
   end
 
   describe 'length' do
     it 'returns the length of the string for text inserts' do
-      RichText::Op.new(:insert, 'abc').length.must_equal 3
+      assert_equal 3, RichText::Op.new(:insert, 'abc').length
     end
 
     it 'returns 1 for non-text inserts' do
-      RichText::Op.new(:insert, { foo: 'bar' }).length.must_equal 1
+      assert_equal 1, RichText::Op.new(:insert, { foo: 'bar' }).length
     end
 
     it 'returns the argument for retains' do
-      RichText::Op.new(:retain, 11).length.must_equal 11
+      assert_equal 11, RichText::Op.new(:retain, 11).length
     end
 
     it 'returns the argument for deletes' do
-      RichText::Op.new(:delete, 2).length.must_equal 2
+      assert_equal 2, RichText::Op.new(:delete, 2).length
     end
   end
 
   describe 'slice' do
     it 'returns a dup when no args passed' do
       op = RichText::Op.new(:insert, 'abc')
-      op.slice.must_equal op
-      op.slice.wont_be :equal?, op
+      assert_equal op, op.slice
+      refute_operator op.slice, :equal?, op
     end
 
     it 'cannot split a non-string insert' do
       op = RichText::Op.new(:insert, 1, { foo: 'bar' })
-      op.slice(0, 1).must_equal op
-      proc { op.slice(1, 2) }.must_raise ArgumentError
+      assert_equal op, op.slice(0, 1)
+      assert_raises(ArgumentError) { op.slice(1, 2) }
     end
 
     it 'splits a string insert' do
-      RichText::Op.new(:insert, 'abc').slice(1, 1)
-        .must_equal RichText::Op.new(:insert, 'b')
-      RichText::Op.new(:insert, 'abc', { x: true }).slice(1, 5)
-        .must_equal RichText::Op.new(:insert, 'bc', { x: true })
+      assert_equal(
+        RichText::Op.new(:insert, 'b'),
+        RichText::Op.new(:insert, 'abc').slice(1, 1)
+      )
+      assert_equal(
+        RichText::Op.new(:insert, 'bc', { x: true }),
+        RichText::Op.new(:insert, 'abc', { x: true }).slice(1, 5)
+      )
     end
 
     it 'splits a retain' do
-      RichText::Op.new(:retain, 10, { x: true }).slice(4, 2)
-        .must_equal RichText::Op.new(:retain, 2, { x: true })
-      RichText::Op.new(:retain, 10, { x: true }).slice(4, 20)
-        .must_equal RichText::Op.new(:retain, 6, { x: true })
+      assert_equal(
+        RichText::Op.new(:retain, 2, { x: true }),
+        RichText::Op.new(:retain, 10, { x: true }).slice(4, 2)
+      )
+      assert_equal(
+        RichText::Op.new(:retain, 6, { x: true }),
+        RichText::Op.new(:retain, 10, { x: true }).slice(4, 20)
+      )
     end
 
     it 'splits a delete' do
-      RichText::Op.new(:retain, 10).slice(4, 2)
-        .must_equal RichText::Op.new(:retain, 2)
-      RichText::Op.new(:retain, 10).slice(4, 20)
-        .must_equal RichText::Op.new(:retain, 6)
+      assert_equal(
+        RichText::Op.new(:retain, 2),
+        RichText::Op.new(:retain, 10).slice(4, 2)
+      )
+      assert_equal(
+        RichText::Op.new(:retain, 6),
+        RichText::Op.new(:retain, 10).slice(4, 20)
+      )
     end
   end
 
   describe 'to_h' do
     it 'omits attributes when not present' do
-      RichText::Op.new(:insert, 'abc').to_h.must_equal(:insert => 'abc')
+      assert_equal ({ :insert => 'abc' }), RichText::Op.new(:insert, 'abc').to_h
     end
 
     it 'includes attributes when present' do
-      RichText::Op.new(:insert, 'abc', { foo: true }).to_h.must_equal({
+      assert_equal({
         :insert => 'abc',
         :attributes => { :foo => true }
-      })
+      }, RichText::Op.new(:insert, 'abc', { foo: true }).to_h)
     end
   end
 
   describe 'inspect' do
     it 'includes class name by default' do
-      RichText::Op.new(:insert, 'abc', { foo: true }).inspect
-        .must_equal '#<RichText::Op insert="abc" {:foo=>true}>'
+      assert_equal(
+        '#<RichText::Op insert="abc" {:foo=>true}>',
+        RichText::Op.new(:insert, 'abc', { foo: true }).inspect
+      )
     end
 
     it 'omits class name when flag is passed' do
-      RichText::Op.new(:retain, 4, { x: 1 }).inspect(false)
-        .must_equal "retain=4 {:x=>1}"
+      assert_equal(
+        "retain=4 {:x=>1}",
+        RichText::Op.new(:retain, 4, { x: 1 }).inspect(false)
+      )
     end
   end
 
@@ -156,22 +172,22 @@ describe RichText::Op do
     let(:z) { RichText::Op.new(:delete, 4) }
 
     it 'returns true for same type, arg, and attributes' do
-      a.must_equal b
-      x.wont_equal y
-      x.wont_equal z
+      assert_equal b, a
+      refute_equal y, x
+      refute_equal z, x
     end
 
     it 'returns false for differing types' do
-      a.wont_equal x
-      x.wont_equal z
+      refute_equal x, a
+      refute_equal z, x
     end
 
     it 'returns false for differing values' do
-      a.wont_equal c
+      refute_equal c, a
     end
 
     it 'returns false for differing attributes' do
-      x.wont_equal y
+      refute_equal y, x
     end
   end
 end
