@@ -12,37 +12,37 @@ describe RichText::Iterator do
 
   describe 'peek' do
     it 'returns the full remainder of the current op' do
-      subject.peek.must_equal RichText::Op.new(:insert, 'abc')
+      assert_equal RichText::Op.new(:insert, 'abc'), subject.peek
       subject.next(1)
-      subject.peek.must_equal RichText::Op.new(:insert, 'bc')
+      assert_equal RichText::Op.new(:insert, 'bc'), subject.peek
     end
 
     it 'returns an inifinite retain when no more ops' do
-      RichText::Iterator.new([]).peek.must_equal RichText::Op.new(:retain, Float::INFINITY)
+      assert_equal RichText::Op.new(:retain, Float::INFINITY), RichText::Iterator.new([]).peek
     end
   end
 
   describe 'next?' do
     it 'returns true if we have not advanced beyond the end' do
-      subject.next?.must_equal true
+      assert_equal true, subject.next?
     end
 
     it 'returns false if we have advanced beyond the end' do
       4.times { subject.next }
-      subject.next?.must_equal false
+      assert_equal false, subject.next?
     end
   end
 
   describe 'next' do
     it 'without argument, returns remainder of current op' do
-      subject.next.must_equal RichText::Op.new(:insert, 'abc')
-      subject.next.must_equal RichText::Op.new(:retain, 3, { test: true })
+      assert_equal RichText::Op.new(:insert, 'abc'), subject.next
+      assert_equal RichText::Op.new(:retain, 3, { test: true }), subject.next
     end
 
     it 'with argument, returns an op of at most that length' do
-      subject.next(2).must_equal RichText::Op.new(:insert, 'ab')
-      subject.next(2).must_equal RichText::Op.new(:insert, 'c')
-      subject.next(2).must_equal RichText::Op.new(:retain, 2, { test: true })
+      assert_equal RichText::Op.new(:insert, 'ab'), subject.next(2)
+      assert_equal RichText::Op.new(:insert, 'c'), subject.next(2)
+      assert_equal RichText::Op.new(:retain, 2, { test: true }), subject.next(2)
     end
   end
 
@@ -50,7 +50,7 @@ describe RichText::Iterator do
     it 'rewinds iteration back to the beginning' do
       4.times { subject.next }
       subject.reset
-      subject.next.must_equal RichText::Op.new(:insert, 'abc')
+      assert_equal RichText::Op.new(:insert, 'abc'), subject.next
     end
   end
 end
