@@ -1,5 +1,7 @@
 # Rich Text
 
+![tests status](https://github.com/voxmedia/rich-text-ruby/workflows/tests/badge.svg)
+
 Ported from https://github.com/quilljs/delta, this library provides an elegant way of creating, manipulating, iterating, and transforming rich-text deltas and documents with a ruby-native API.
 
 rich-text (aka Quill delta) is a format for representing attributed text. It aims to be intuitive and human readable with the ability to express any possible document or diff between documents.
