@@ -27,9 +27,9 @@ describe RichText::HTML do
     d = RichText::Delta.new([
       { insert: 'a man ' },
       { insert: 'a plan', attributes: { link: 'https://visitpanama.com' } },
-      { insert: "\n" },
+      { insert: " panama\n" },
     ])
-    assert_equal '<p>a man <a href="https://visitpanama.com">a plan</a></p>', RichText::HTML.render(d)
+    assert_equal '<p>a man <a href="https://visitpanama.com">a plan</a> panama</p>', RichText::HTML.render(d)
   end
 
   it 'renders multiple level of inline attribution' do
@@ -41,54 +41,59 @@ describe RichText::HTML do
     assert_equal '<p>a man <a href="https://visitpanama.com"><em><strong>a plan</strong></em></a></p>', RichText::HTML.render(d)
   end
 
-  describe 'basic html' do
-    subject = RichText::Delta.new([
-      { insert: 'hello ' },
-      { insert: 'world', attributes: { bold: true } },
+  it 'allows inline formatting options to override defaults' do
+    d = RichText::Delta.new([
+      { insert: 'a man ' },
+      { insert: 'a plan', attributes: { bold: true } },
       { insert: "\n" },
-      {
-        insert: {
-          image: {
-            caption: "School board chairwoman Miska Clay Bibbs, left, and Superintendent Joris Ray.",
-            credit: "Laura Faith Kebede/Chalkbeat",
-            crop: {
-              h: 1920,
-              w: 2560,
-              x: 0,
-              y: 0
-            },
-            height: 1920,
-            hide_credit: false,
-            id: 19684875,
-            letterbox: false,
-            src: "https://cdn.vox-cdn.com/uploads/chorus_asset/file/19684875/school_board_2_scaled.jpg",
-            subject: {
-              x: 1280,
-              y: 960
-            },
-            width: 2560
-          }
-        }
-      },
-      { insert: "\n" },
-      { insert: 'testing ' },
-      { insert: 'links', attributes: { link: 'https://voxmedia.com' } },
-      { insert: " with tail\n" },
-      { insert: "items" },
-      { insert: "\n", attributes: { thirdheader: true } },
-      { insert: "items 1" },
-      { insert: "\n", attributes: { bullet: true } },
-      { insert: "items 2" },
-      { insert: "\n", attributes: { bullet: true } },
-      { insert: "items 3" },
-      { insert: "\n", attributes: { bullet: true } }
     ])
-
-    puts RichText::HTML.render(subject)
+    assert_equal '<p>a man <b>a plan</b></p>', RichText::HTML.render(d, { html_inline_tags: { bold: 'b' } })
   end
 
-  describe '' do
+  it 'renders ordered lists' do
+    d = RichText::Delta.new([
+      { insert: 'a man' },
+      { insert: "\n", attributes: { list: true } },
+      { insert: 'a plan' },
+      { insert: "\n", attributes: { list: true } },
+      { insert: 'panama' },
+      { insert: "\n", attributes: { list: true } }
+    ])
+    assert_equal '<ol><li>a man</li><li>a plan</li><li>panama</li></ol>', RichText::HTML.render(d)
+  end
 
+  it 'renders unordered lists' do
+    d = RichText::Delta.new([
+      { insert: 'a man' },
+      { insert: "\n", attributes: { bullet: true } },
+      { insert: 'a plan' },
+      { insert: "\n", attributes: { bullet: true } },
+      { insert: 'panama' },
+      { insert: "\n", attributes: { bullet: true } }
+    ])
+    assert_equal '<ul><li>a man</li><li>a plan</li><li>panama</li></ul>', RichText::HTML.render(d)
+  end
+
+  it 'renders whitelisted object insertions' do
+    d = RichText::Delta.new([
+      { insert: { image: { src: "https://placekitten.com/200/150" } } },
+      { insert: "\n" }
+    ])
+
+    assert_equal '<p><img src="https://placekitten.com/200/150"/></p>', RichText::HTML.render(d)
+  end
+
+  it 'renders custom object insertions' do
+    d = RichText::Delta.new([
+      { insert: { embed: { src: "https://www.youtube.com/watch?v=fd8tya7Gmv8" } } },
+      { insert: "\n" }
+    ])
+
+    assert_equal '<p><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></p>', RichText::HTML.render(d, {
+      html_object_tags: {
+        embed: ->(content, value) { %(<iframe src="#{content[:src]}"/>) }
+      }
+    })
   end
 
 end
