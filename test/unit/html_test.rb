@@ -2,7 +2,46 @@ require 'test_helper'
 
 describe RichText::HTML do
 
-  describe 'html' do
+  it 'renders basic paragraph string' do
+    d = RichText::Delta.new([{ insert: "hello world\n" }])
+    assert_equal '<p>hello world</p>', RichText::HTML.render(d)
+  end
+
+  it 'renders multiple paragraph strings' do
+    d = RichText::Delta.new([{ insert: "hello\n" }, { insert: "goodbye\n" }])
+    assert_equal '<p>hello</p><p>goodbye</p>', RichText::HTML.render(d)
+  end
+
+  it 'renders basic inline bold and italic HTML formatting' do
+    d = RichText::Delta.new([
+      { insert: 'a man ' },
+      { insert: 'a plan', attributes: { italic: true } },
+      { insert: ' ' },
+      { insert: 'panama', attributes: { bold: true } },
+      { insert: "\n" },
+    ])
+    assert_equal '<p>a man <em>a plan</em> <strong>panama</strong></p>', RichText::HTML.render(d)
+  end
+
+  it 'renders inline link formatting' do
+    d = RichText::Delta.new([
+      { insert: 'a man ' },
+      { insert: 'a plan', attributes: { link: 'https://visitpanama.com' } },
+      { insert: "\n" },
+    ])
+    assert_equal '<p>a man <a href="https://visitpanama.com">a plan</a></p>', RichText::HTML.render(d)
+  end
+
+  it 'renders multiple level of inline attribution' do
+    d = RichText::Delta.new([
+      { insert: 'a man ' },
+      { insert: 'a plan', attributes: { bold: true, italic: true, link: 'https://visitpanama.com' } },
+      { insert: "\n" },
+    ])
+    assert_equal '<p>a man <a href="https://visitpanama.com"><em><strong>a plan</strong></em></a></p>', RichText::HTML.render(d)
+  end
+
+  describe 'basic html' do
     subject = RichText::Delta.new([
       { insert: 'hello ' },
       { insert: 'world', attributes: { bold: true } },
@@ -46,6 +85,10 @@ describe RichText::HTML do
     ])
 
     puts RichText::HTML.render(subject)
+  end
+
+  describe '' do
+
   end
 
 end

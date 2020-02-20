@@ -6,18 +6,16 @@ module RichText
   class HTML
     ConfigError = Class.new(StandardError)
 
-    attr_reader :config
-
     def self.render(delta, options={})
-      new(RichText.config).render(delta)
+      new(RichText.config, options).render(delta)
     end
 
-    def initialize(config)
-      @default_block_tag = config.html_default_block_tag
-      @sibling_merge_tags = config.html_sibling_merge_tags
-      @block_tags = config.html_block_tags
-      @inline_tags = config.html_inline_tags
-      @object_tags = config.html_object_tags
+    def initialize(config, options)
+      @default_block_tag = options[:html_default_block_tag] || config.html_default_block_tag
+      @sibling_merge_tags = [options[:html_sibling_merge_tags], config.html_sibling_merge_tags].compact.uniq
+      @block_tags = config.html_block_tags.merge(options[:html_block_tags] || {})
+      @inline_tags = config.html_inline_tags.merge(options[:html_inline_tags] || {})
+      @object_tags = config.html_object_tags.merge(options[:html_object_tags] || {})
     end
 
     def render(delta)
