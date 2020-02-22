@@ -30,6 +30,10 @@ module RichText
       image: {
         tag: 'img',
         build: ->(el, op) { el[:src] = op.value.dig(:image, :src); el }
+      },
+      oembed: {
+        tag: 'iframe',
+        build: ->(el, op) { el[:src] = op.value.dig(:oembed, :url); el }
       }
     }.freeze
 
@@ -46,6 +50,7 @@ module RichText
       @object_formats = OBJECT_FORMATS.merge(options[:object_formats] || {})
 
       @doc = Nokogiri::XML::Document.new
+      @doc.encoding = 'UTF-8'
       @root = create_tag('main')
     end
 
@@ -66,7 +71,7 @@ module RichText
         flow = nil
       end
 
-      @root.to_html
+      @root.to_xml
     end
 
     def create_tag(name)
