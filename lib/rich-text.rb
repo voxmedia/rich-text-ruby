@@ -15,21 +15,32 @@ require 'rich-text/html'
 
 RichText.configure do |c|
   c.safe_mode = true
-  c.html_default_block_tag = 'p'
-  c.html_sibling_merge_tags = %w[ol ul]
-  c.html_block_tags = {
-    firstheader: 'h1',
-    secondheader: 'h2',
-    thirdheader: 'h3',
-    list: ->(content, value) { %(<ol><li>#{content}</li></ol>) },
-    bullet: ->(content, value) { %(<ul><li>#{content}</li></ul>) }
+
+  c.html_default_block_format = :paragraph
+
+  c.html_block_formats = {
+    br:             { tag: 'br', attrs: %w[id], inline: true },
+    bullet:         { tag: 'li', attrs: %w[id], parent: 'ul' },
+    fifthheader:    { tag: 'h5', attrs: %w[id] },
+    firstheader:    { tag: 'h1', attrs: %w[id] },
+    fourthheader:   { tag: 'h4', attrs: %w[id] },
+    list:           { tag: 'li', attrs: %w[id], parent: 'ol' },
+    paragraph:      { tag: 'p',  attrs: %w[id] },
+    secondheader:   { tag: 'h2', attrs: %w[id] },
+    thirdheader:    { tag: 'h3', attrs: %w[id] },
   }
-  c.html_inline_tags = {
-    bold: 'strong',
-    italic: 'em',
-    link: ->(content, value) { %(<a href="#{value}">#{content}</a>) }
+
+  c.html_inline_formats = {
+    bold:           { tag: 'strong' },
+    italic:         { tag: 'em' },
+    link:           { tag: 'a', value: 'href' },
+    strike:         { tag: 'strike' },
   }
-  c.html_object_tags = {
-    image: ->(content, value) { %(<img src="#{content[:src]}"/>) }
+
+  c.html_object_formats = {
+    image: {
+      tag: 'img',
+      build: ->(el, op) { el[:src] = op.value.dig(:image, :src); el }
+    }
   }
 end

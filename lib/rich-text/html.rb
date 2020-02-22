@@ -7,47 +7,21 @@ module RichText
   class HTML
     ConfigError = Class.new(StandardError)
 
-    BLOCK_FORMATS = {
-      br:             { tag: 'br', attrs: %w[id], inline: true },
-      bullet:         { tag: 'li', attrs: %w[id], parent: 'ul' },
-      fifthheader:    { tag: 'h5', attrs: %w[id] },
-      firstheader:    { tag: 'h1', attrs: %w[id] },
-      fourthheader:   { tag: 'h4', attrs: %w[id] },
-      list:           { tag: 'li', attrs: %w[id], parent: 'ol' },
-      paragraph:      { tag: 'p',  attrs: %w[id] },
-      secondheader:   { tag: 'h2', attrs: %w[id] },
-      thirdheader:    { tag: 'h3', attrs: %w[id] },
-    }.freeze
-
-    INLINE_FORMATS = {
-      bold:           { tag: 'strong' },
-      italic:         { tag: 'em' },
-      link:           { tag: 'a', value: 'href' },
-      strike:         { tag: 'strike' },
-    }.freeze
-
-    OBJECT_FORMATS = {
-      image: {
-        tag: 'img',
-        build: ->(el, op) { el[:src] = op.value.dig(:image, :src); el }
-      },
-      oembed: {
-        tag: 'iframe',
-        build: ->(el, op) { el[:src] = op.value.dig(:oembed, :url); el }
-      }
-    }.freeze
+    def self.render_xml(delta, options={})
+      new(RichText.config, options).render(delta)
+    end
 
     def self.render(delta, options={})
-      new(RichText.config, options).render(delta)
+      render_xml(delta, options).inner_html
     end
 
     attr_reader :doc, :root
 
     def initialize(config, options)
-      @default_block_tag = 'paragraph' || options[:default_block_tag] || config.html_default_block_tag
-      @block_formats = BLOCK_FORMATS.merge(options[:block_formats] || {})
-      @inline_formats = INLINE_FORMATS.merge(options[:inline_formats] || {})
-      @object_formats = OBJECT_FORMATS.merge(options[:object_formats] || {})
+      @default_block_format = options[:default_block_format] || config.html_default_block_format
+      @block_formats = config.html_block_formats.merge(options[:block_formats] || {})
+      @inline_formats = config.html_inline_formats.merge(options[:inline_formats] || {})
+      @object_formats = config.html_object_formats.merge(options[:object_formats] || {})
 
       @doc = Nokogiri::XML::Document.new
       @doc.encoding = 'UTF-8'
@@ -57,8 +31,10 @@ module RichText
     def render(delta)
       raise TypeError.new("cannot convert retain or delete ops to html") unless delta.insert_only?
 
+      line = nil
       flow = nil
-      delta.each_line do |line|
+      delta.each_line do |l|
+        line = l
         next unless line.ops.any?
 
         # render a flow for each line
@@ -71,7 +47,13 @@ module RichText
         flow = nil
       end
 
-      @root.to_xml
+      if flow.is_a?(Array)
+        # force uncomitted flow into a block element
+        # this would occur if the delta ends with an inlined block (br tag)
+        @root.add_child(render_block(line, flow, force_block: true))
+      end
+
+      @root
     end
 
     def create_tag(name)
@@ -127,10 +109,14 @@ module RichText
       end
     end
 
-    def render_block(delta, flow)
+    def render_block(delta, flow, force_block: false)
       op = delta.ops.last
       block_format = @block_formats[(@block_formats.keys & op.attributes.keys.map(&:to_sym)).first]
-      block_format ||= @block_formats[@default_block_tag.to_sym]
+
+      # force a non-inline format when ending the delta
+      if !block_format || (block_format[:inline] && force_block)
+        block_format = @block_formats[@default_block_format.to_sym]
+      end
 
       if block_format[:inline]
         # inline block elements add to flow and continue to next line
