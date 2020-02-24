@@ -3,7 +3,6 @@ require 'singleton'
 require 'nokogiri'
 
 module RichText
-  # @todo Work in progress
   class HTML
     ConfigError = Class.new(StandardError)
 
@@ -31,24 +30,24 @@ module RichText
     def render(delta)
       raise TypeError.new("cannot convert retain or delete ops to html") unless delta.insert_only?
 
-      linefeeds = []
+      render_lines = []
+
+      # loop through each delta line and group together inline separators.
+      # a delta line ends at each newline character with indifference,
+      # while a render line may choose to group some newlines (like "br" tags).
       delta.each_line do |line|
         next unless line.ops.any?
 
-        # group lines separated by inline returns ("br" tags) together
-        if linefeeds.any? && inline_tag?(linefeeds.last.last)
-          linefeeds.last.push(*line.ops)
+        if render_lines.any? && inline_tag?(render_lines.last.last)
+          # merge inlined return into previous render line
+          render_lines.last.push(*line.ops)
         else
-          linefeeds.push(line.ops.dup)
+          render_lines.push(line.ops.dup)
         end
       end
 
-      linefeeds.each { |ops| render_line(ops) }
+      render_lines.each { |ops| render_line(ops) }
       @root
-    end
-
-    def create_tag(name)
-      create_node(tag: name)
     end
 
   private
@@ -57,10 +56,13 @@ module RichText
       op.attributes.keys.find { |k| @inline_formats[k.to_sym]&.key?(:tag) }
     end
 
+    # renders a single line of operations
     def render_line(ops)
-      default_block_format = @default_block_format.to_sym
-      new_block_format = default_block_format
+      current_block_format = @default_block_format.to_sym
+      new_block_format = current_block_format
 
+      # Render all inline operations with defined formats
+      # results in an array of element for the rendered line
       elements = ops.reduce([]) do |els, op|
         # String insert
         if op.value.is_a?(String)
@@ -77,19 +79,22 @@ module RichText
           els << apply_format(format, op.value, op)
         end
 
-        # Flush the element flow when switching default block formats
-        if new_block_format != default_block_format
-          render_block(ops.last, els.take(els.length - 1), default_block_format)
-          default_block_format = new_block_format
+        # Flush the element flow when switching block formats
+        if new_block_format != current_block_format
+          render_block(ops.last, els.take(els.length - 1), current_block_format)
+          current_block_format = new_block_format
           els.last(1)
         else
           els
         end
       end
 
-      render_block(ops.last, elements, default_block_format)
+      # Render a block wrapper for the inlined elements
+      # places the resulting block into the root document
+      render_block(ops.last, elements, current_block_format)
     end
 
+    # renders a block for a collection of elements based on a final operation
     def render_block(op, elements, default_block_format=@default_block_format)
       return unless elements.any?
 
@@ -180,6 +185,10 @@ module RichText
       end
 
       el
+    end
+
+    def create_tag(name)
+      create_node(tag: name)
     end
 
   end
