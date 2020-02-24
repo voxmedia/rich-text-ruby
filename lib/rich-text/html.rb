@@ -31,19 +31,19 @@ module RichText
     def render(delta)
       raise TypeError.new("cannot convert retain or delete ops to html") unless delta.insert_only?
 
-      feeds = []
+      linefeeds = []
       delta.each_line do |line|
         next unless line.ops.any?
 
         # group lines separated by inline returns ("br" tags) together
-        if feeds.any? && inline_tag?(feeds.last.last)
-          feeds.last.push(*line.ops)
+        if linefeeds.any? && inline_tag?(linefeeds.last.last)
+          linefeeds.last.push(*line.ops)
         else
-          feeds.push(line.ops.dup)
+          linefeeds.push(line.ops.dup)
         end
       end
 
-      feeds.each { |feed| @root.add_child(render_line_feed(feed)) }
+      linefeeds.each { |ops| render_line(ops) }
       @root
     end
 
@@ -57,43 +57,66 @@ module RichText
       op.attributes.keys.find { |k| @inline_formats[k.to_sym]&.key?(:tag) }
     end
 
-    def create_node(format={}, content=nil, tag:nil, op:nil, attr_value:nil)
-      el = Nokogiri::XML::Node.new(tag || format[:tag], @doc)
+    def render_line(ops)
+      default_block_format = @default_block_format.to_sym
+      new_block_format = default_block_format
 
-      if content.is_a?(String)
-        el.content = content
-      elsif content.is_a?(Nokogiri::XML::Node)
-        el.add_child(content)
-      elsif content.is_a?(Array)
-        content.each { |n| el.add_child(n) }
-      end
-
-      if format[:build].respond_to?(:call) && op
-        el = format[:build].call(el, op)
-      end
-
-      el
-    end
-
-    def render_line_feed(feed)
-      content = feed.each_with_object([]) do |op, els|
+      elements = ops.reduce([]) do |els, op|
+        # String insert
         if op.value.is_a?(String)
           value = op.value.sub(/\n$/, '')
-          els << apply_formats(@inline_formats, value, op) if value.length > 0 || inline_tag?(op)
+          if value.length > 0 || inline_tag?(op)
+            new_block_format = @default_block_format.to_sym
+            els << apply_formats(@inline_formats, value, op)
+          end
+
+        # Object insert
         elsif op.value.is_a?(Hash) && key = @inline_formats.keys.detect { |k| op.value.key?(k) }
-          els << apply_format(@inline_formats[key.to_sym], op.value, op)
+          format = @inline_formats[key.to_sym]
+          new_block_format = format[:block_format] if format.key?(:block_format)
+          els << apply_format(format, op.value, op)
+        end
+
+        # Flush the element flow when switching default block formats
+        if new_block_format != default_block_format
+          render_block(ops.last, els.take(els.length - 1), default_block_format)
+          default_block_format = new_block_format
+          els.last(1)
+        else
+          els
         end
       end
 
-      # manually build block attributes to course-correct malformed structure
-      # reject any inline formats, and assure a block tag format is defined
-      op = feed.last
+      render_block(ops.last, elements, default_block_format)
+    end
+
+    def render_block(op, elements, default_block_format=@default_block_format)
+      return unless elements.any?
+
+      # manually build block attributes to normalize malformed structures
       block_attrs = op.attributes.slice(*@block_formats.keys)
-      unless block_attrs.detect { |k, v| @block_formats[k.to_sym].key?(:tag) }
-        block_attrs[@default_block_format.to_sym] = true
+
+      # direct insertions (like "hr" tags) omit block format entirely
+      # install these elements directly into the document
+      if !default_block_format
+        # remove tag formats from these insertions so that they don't get wrapped
+        block_attrs = Hash[block_attrs.reject { |k, v| @block_formats[k.to_sym].key?(:tag) }]
+        return elements.each do |el|
+          el = apply_formats(@block_formats, el, op, attributes: block_attrs)
+          @root.add_child(el)
+        end
       end
 
-      apply_formats(@block_formats, content, op, attributes: block_attrs)
+      # reject any inline formats, and assure a block tag format is defined
+      unless block_attrs.detect { |k, v| @block_formats[k.to_sym].key?(:tag) }
+        unless @block_formats.key?(default_block_format.to_sym)
+          raise TypeError.new("block format #{default_block_format} is not defined")
+        end
+        block_attrs[default_block_format.to_sym] = true
+      end
+
+      el = apply_formats(@block_formats, elements, op, attributes: block_attrs)
+      @root.add_child(el)
     end
 
     def apply_formats(formats, content, op, attributes:nil)
@@ -139,6 +162,24 @@ module RichText
       end
 
       content
+    end
+
+    def create_node(format={}, content=nil, tag:nil, op:nil, attr_value:nil)
+      el = Nokogiri::XML::Node.new(tag || format[:tag], @doc)
+
+      if content.is_a?(String)
+        el.content = content
+      elsif content.is_a?(Nokogiri::XML::Node)
+        el.add_child(content)
+      elsif content.is_a?(Array)
+        content.each { |n| el.add_child(n) }
+      end
+
+      if format[:build].respond_to?(:call) && op
+        el = format[:build].call(el, op)
+      end
+
+      el
     end
 
   end
