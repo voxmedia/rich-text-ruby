@@ -14,39 +14,42 @@ require 'rich-text/delta'
 require 'rich-text/html'
 
 RichText.configure do |c|
-  c.safe_mode = true
 
-  c.html_default_block_format = :paragraph
+  c.html_inline_formats = {
+    bold:           { tag: 'strong' },
+    br:             { tag: 'br' },
+    hr:             { tag: 'hr', block_format: false },
+    image:          { tag: 'img', block_format: :figure, apply: ->(el, op){ el[:src] = op.value.dig(:image, :src) } },
+    ins:            { tag: 'ins' },
+    italic:         { tag: 'em' },
+    link:           { tag: 'a', apply: ->(el, op){ el[:href] = op.attributes[:link] } },
+    small:          { tag: 'small' },
+    strike:         { tag: 's' },
+    subscript:      { tag: 'sub' },
+    superscript:    { tag: 'sup' },
+  }
 
-  c.html_formats = {
-    bold:           { type: :inline, tag: 'strong' },
-    br:             { type: :inline, tag: 'br' },
-    bullet:         { type: :block,  tag: 'li', parent: 'ul' },
-    div:            { type: :block,  tag: 'div' },
-    fifthheader:    { type: :block,  tag: 'h5' },
-    figure:         { type: :block,  tag: 'figure' },
-    firstheader:    { type: :block,  tag: 'h1' },
-    fourthheader:   { type: :block,  tag: 'h4' },
-    hr:             { type: :inline, tag: 'hr', block_format: false },
-    id:             { type: :block,  apply: ->(el, op){ el[:id] = op.attributes[:id] } },
-    image:          { type: :inline, tag: 'img', block_format: :figure, apply: ->(el, op){ el[:src] = op.value.dig(:image, :src) } },
-    ins:            { type: :inline, tag: 'ins' },
-    italic:         { type: :inline, tag: 'em' },
-    link:           { type: :inline, tag: 'a', apply: ->(el, op){ el[:href] = op.attributes[:link] } },
-    list:           { type: :block,  tag: 'li', parent: 'ol' },
-    paragraph:      { type: :block,  tag: 'p' },
-    position:       { type: :block,  apply: ->(el, op){
+  c.html_block_formats = {
+    bullet:         { tag: 'li', parent: 'ul' },
+    div:            { tag: 'div' },
+    fifthheader:    { tag: 'h5' },
+    figure:         { tag: 'figure' },
+    firstheader:    { tag: 'h1' },
+    fourthheader:   { tag: 'h4' },
+    id:             { apply: ->(el, op){ el[:id] = op.attributes[:id] } },
+    list:           { tag: 'li', parent: 'ol' },
+    paragraph:      { tag: 'p' },
+    position:       { apply: ->(el, op){
       classes = (el[:class] || '').split(' ')
       classes << op.attributes[:position]
       el[:class] = classes.uniq.join(' ')
       el
     }},
-    secondheader:   { type: :block,  tag: 'h2' },
-    sixthheader:    { type: :block,  tag: 'h6' },
-    small:          { type: :inline, tag: 'small' },
-    strike:         { type: :inline, tag: 's' },
-    subscript:      { type: :inline, tag: 'sub' },
-    superscript:    { type: :inline, tag: 'sup' },
-    thirdheader:    { type: :block,  tag: 'h3' },
+    secondheader:   { tag: 'h2' },
+    sixthheader:    { tag: 'h6' },
+    thirdheader:    { tag: 'h3' },
   }
+
+  c.html_default_block_format = :paragraph
+  c.safe_mode = true
 end

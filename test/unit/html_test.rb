@@ -67,7 +67,7 @@ describe RichText::HTML do
       { insert: "\n" },
     ])
     assert_equal '<p>a man <b>a plan</b></p>', render_compact_html(d, {
-      formats: {
+      inline_formats: {
         bold: { tag: 'b' }
       }
     })
@@ -229,7 +229,7 @@ describe RichText::HTML do
       }
     }
 
-    assert_equal '<p><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></p>', render_compact_html(d, formats: f)
+    assert_equal '<p><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></p>', render_compact_html(d, inline_formats: f)
   end
 
   it 'renders custom object insertions with special block formats' do
@@ -246,7 +246,7 @@ describe RichText::HTML do
       }
     }
 
-    assert_equal '<div id="bingo"><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></div>', render_compact_html(d, formats: f)
+    assert_equal '<div id="bingo"><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></div>', render_compact_html(d, inline_formats: f)
   end
 
   it 'renders custom object insertions with no block format' do
@@ -263,7 +263,7 @@ describe RichText::HTML do
       }
     }
 
-    assert_equal '<iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8" id="bingo"/>', render_compact_html(d, formats: f)
+    assert_equal '<iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8" id="bingo"/>', render_compact_html(d, inline_formats: f)
   end
 
   it 'renders custom object insertions with a build function' do
@@ -286,7 +286,7 @@ describe RichText::HTML do
       }
     }
 
-    assert_equal '<image id="bingo"><img src="https://placekitten.com/200/150"/><cite>cuteness</cite></image>', render_compact_html(d, formats: f)
+    assert_equal '<image id="bingo"><img src="https://placekitten.com/200/150"/><cite>cuteness</cite></image>', render_compact_html(d, inline_formats: f)
   end
 
   it 'renders custom object insertions into story flow' do
@@ -313,7 +313,7 @@ describe RichText::HTML do
       }
     }
 
-    assert_equal '<p>before</p><figure><img src="https://placekitten.com/200/150"/><cite>cuteness</cite></figure><p>after</p>', render_compact_html(d, formats: f)
+    assert_equal '<p>before</p><figure><img src="https://placekitten.com/200/150"/><cite>cuteness</cite></figure><p>after</p>', render_compact_html(d, inline_formats: f)
   end
 
   it 'gracefully handles missing newline ends' do

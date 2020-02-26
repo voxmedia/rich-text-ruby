@@ -18,9 +18,8 @@ module RichText
 
     def initialize(config, options)
       @default_block_format = options[:default_block_format] || config.html_default_block_format
-      @formats = config.html_formats.merge(options[:formats] || {})
-      @inline_formats = Hash[@formats.select { |k, v| !v.key?(:type) || v[:type] == :inline }]
-      @block_formats = Hash[@formats.select { |k, v| v[:type] == :block }]
+      @inline_formats = config.html_inline_formats.merge(options[:inline_formats] || {})
+      @block_formats = config.html_block_formats.merge(options[:block_formats] || {})
 
       @doc = Nokogiri::XML::Document.new
       @doc.encoding = 'UTF-8'
