@@ -6,20 +6,17 @@ module RichText
   class HTML
     ConfigError = Class.new(StandardError)
 
-    def self.render_xml(delta, options={})
-      new(RichText.config, options).render(delta)
-    end
-
     def self.render(delta, options={})
-      render_xml(delta, options).inner_html
+      new(RichText.config, options).render(delta).inner_html
     end
 
-    attr_reader :doc, :root
+    attr_reader :doc
 
     def initialize(config, options)
       @default_block_format = options[:default_block_format] || config.html_default_block_format
       @inline_formats = config.html_inline_formats.merge(options[:inline_formats] || {})
       @block_formats = config.html_block_formats.merge(options[:block_formats] || {})
+      @context = options[:render_context]
 
       @doc = Nokogiri::XML::Document.new
       @doc.encoding = 'UTF-8'
@@ -95,15 +92,18 @@ module RichText
 
     # renders a block for a collection of elements based on a final operation
     def render_block(op, elements, default_block_format=@default_block_format)
-      return unless elements.any?
+      return unless elements.compact.any?
 
       # manually build block attributes to normalize malformed structures
+      # assure that only block attributes are allowed to format blocks
       block_attrs = op.attributes.slice(*@block_formats.keys)
+      block_formats = @block_formats
 
       # direct insertions (like "hr" tags) omit block format entirely
-      # install these elements directly into the document
+      # install these elements directly into the root flow
       if !default_block_format
-        # remove tag formats from these insertions so that they don't get wrapped
+        # remove tag formats from from insertions without a block,
+        # this assures that only custom (non-tag) formatters run on the element
         block_attrs = Hash[block_attrs.reject { |k, v| @block_formats[k.to_sym].key?(:tag) }]
         return elements.each do |el|
           el = apply_formats(@block_formats, el, op, attributes: block_attrs)
@@ -111,15 +111,19 @@ module RichText
         end
       end
 
-      # reject any inline formats, and assure a block tag format is defined
-      unless block_attrs.detect { |k, v| @block_formats[k.to_sym].key?(:tag) }
-        unless @block_formats.key?(default_block_format.to_sym)
-          raise TypeError.new("block format #{default_block_format} is not defined")
+      # assure that the block has a tag formatting attribute
+      # use or build a format for the default format, when necessary
+      unless block_attrs.detect { |k, v| block_formats[k.to_sym].key?(:tag) }
+        # if the default isn't an official format, built a one-off definition for it
+        unless block_formats.key?(default_block_format.to_sym)
+          block_formats = block_formats.merge(default_block_format.to_sym => { tag: default_block_format.to_s })
         end
+
+        # add a formatting attribute to apply the default block tag
         block_attrs[default_block_format.to_sym] = true
       end
 
-      el = apply_formats(@block_formats, elements, op, attributes: block_attrs)
+      el = apply_formats(block_formats, elements, op, attributes: block_attrs)
       @root.add_child(el)
     end
 
@@ -147,7 +151,7 @@ module RichText
       end
 
       if format[:apply] && format[:apply].respond_to?(:call)
-        format[:apply].call(content, op)
+        format[:apply].call(content, op, @context)
       end
 
       if format[:parent]
@@ -180,7 +184,7 @@ module RichText
       end
 
       if format[:build].respond_to?(:call) && op
-        el = format[:build].call(el, op)
+        el = format[:build].call(el, op, @context)
       end
 
       el

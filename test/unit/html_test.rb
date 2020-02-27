@@ -1,6 +1,27 @@
 require 'test_helper'
 
 describe RichText::HTML do
+  before do
+    RichText.configure do |c|
+      c.html_inline_formats = {
+        bold:           { tag: 'strong' },
+        br:             { tag: 'br' },
+        italic:         { tag: 'em' },
+        link:           { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } }
+      }.freeze
+
+      c.html_block_formats = {
+        firstheader:    { tag: 'h1' },
+        secondheader:   { tag: 'h2' },
+        thirdheader:    { tag: 'h3' },
+        bullet:         { tag: 'li', parent: 'ul' },
+        list:           { tag: 'li', parent: 'ol' },
+        id:             { apply: ->(el, op, ctx){ el[:id] = op.attributes[:id] } }
+      }.freeze
+
+      c.html_default_block_format = 'p'
+    end
+  end
 
   it 'renders basic paragraph string' do
     d = RichText::Delta.new([{ insert: "hello world\n" }])
@@ -21,26 +42,6 @@ describe RichText::HTML do
       { insert: "\n" },
     ])
     assert_equal '<p>a man <em>a plan</em> <strong>panama</strong></p>', render_compact_html(d)
-  end
-
-  it 'renders inline formats' do
-    d = RichText::Delta.new([
-      { insert: 'bold', attributes: { bold: true } },
-      { insert: ' ' },
-      { insert: 'insert', attributes: { ins: true } },
-      { insert: ' ' },
-      { insert: 'italic', attributes: { italic: true } },
-      { insert: ' ' },
-      { insert: 'small', attributes: { small: true } },
-      { insert: ' ' },
-      { insert: 'strike', attributes: { strike: true } },
-      { insert: ' ' },
-      { insert: 'subscript', attributes: { subscript: true } },
-      { insert: ' ' },
-      { insert: 'superscript', attributes: { superscript: true } },
-      { insert: "\n" },
-    ])
-    assert_equal '<p><strong>bold</strong> <ins>insert</ins> <em>italic</em> <small>small</small> <s>strike</s> <sub>subscript</sub> <sup>superscript</sup></p>', render_compact_html(d)
   end
 
   it 'renders inline formats with applied attributes' do
@@ -66,26 +67,13 @@ describe RichText::HTML do
       { insert: 'a plan', attributes: { bold: true } },
       { insert: "\n" },
     ])
-    assert_equal '<p>a man <b>a plan</b></p>', render_compact_html(d, {
-      inline_formats: {
-        bold: { tag: 'b' }
-      }
+
+    assert_equal '<p>a man <b>a plan</b></p>', render_compact_html(d, inline_formats: {
+      bold: { tag: 'b' }
     })
   end
 
-  it 'renders ordered lists' do
-    d = RichText::Delta.new([
-      { insert: 'a man' },
-      { insert: "\n", attributes: { list: true } },
-      { insert: 'a plan' },
-      { insert: "\n", attributes: { list: true } },
-      { insert: 'panama' },
-      { insert: "\n", attributes: { list: true } }
-    ])
-    assert_equal '<ol><li>a man</li><li>a plan</li><li>panama</li></ol>', render_compact_html(d)
-  end
-
-  it 'renders unordered lists' do
+  it 'renders blocks with parent elements' do
     d = RichText::Delta.new([
       { insert: 'a man' },
       { insert: "\n", attributes: { bullet: true } },
@@ -97,7 +85,7 @@ describe RichText::HTML do
     assert_equal '<ul><li>a man</li><li>a plan</li><li>panama</li></ul>', render_compact_html(d)
   end
 
-  it 'renders back-to-back list types' do
+  it 'renders properly merged parent sets' do
     d = RichText::Delta.new([
       { insert: 'helium' },
       { insert: "\n", attributes: { list: true } },
@@ -118,19 +106,9 @@ describe RichText::HTML do
       { insert: 'b' },
       { insert: "\n", attributes: { secondheader: true } },
       { insert: 'c' },
-      { insert: "\n", attributes: { thirdheader: true } },
-      { insert: 'd' },
-      { insert: "\n", attributes: { fourthheader: true } },
-      { insert: 'e' },
-      { insert: "\n", attributes: { fifthheader: true } },
-      { insert: 'f' },
-      { insert: "\n", attributes: { sixthheader: true } },
-      { insert: 'mali principii' },
-      { insert: "\n", attributes: { paragraph: true } },
-      { insert: 'malus finis' },
-      { insert: "\n", attributes: { div: true } },
+      { insert: "\n", attributes: { thirdheader: true } }
     ])
-    assert_equal '<h1>a</h1><h2>b</h2><h3>c</h3><h4>d</h4><h5>e</h5><h6>f</h6><p>mali principii</p><div>malus finis</div>', render_compact_html(d)
+    assert_equal '<h1>a</h1><h2>b</h2><h3>c</h3>', render_compact_html(d)
   end
 
   it 'renders inline breaks' do
@@ -157,38 +135,12 @@ describe RichText::HTML do
     assert_equal '<p>a man<br/>a plan<br/>panama<br/></p>', render_compact_html(d)
   end
 
-  it 'renders horizontal rules' do
-    d = RichText::Delta.new([
-      { insert: "a man\n" },
-      { insert: { hr: true } },
-      { insert: "\n" },
-      { insert: 'a plan' }
-    ])
-    assert_equal '<p>a man</p><hr/><p>a plan</p>', render_compact_html(d)
-  end
-
-  it 'renders horizontal rules with attributes' do
-    d = RichText::Delta.new([
-      { insert: { hr: true } },
-      { insert: "\n", attributes: { id: 'bingo' } }
-    ])
-    assert_equal '<hr id="bingo"/>', render_compact_html(d)
-  end
-
-  it 'renders id attributes' do
+  it 'renders attributes' do
     d = RichText::Delta.new([
       { insert: 'mali principii' },
       { insert: "\n", attributes: { id: 'mali' } }
     ])
     assert_equal '<p id="mali">mali principii</p>', render_compact_html(d)
-  end
-
-  it 'renders position attributes' do
-    d = RichText::Delta.new([
-      { insert: 'malus finis' },
-      { insert: "\n", attributes: { position: 'float-right' } }
-    ])
-    assert_equal '<p class="float-right">malus finis</p>', render_compact_html(d)
   end
 
   it 'ignores invalid attributes' do
@@ -199,76 +151,75 @@ describe RichText::HTML do
     assert_equal '<p>malus finis</p>', render_compact_html(d)
   end
 
-  it 'accepts another default block format' do
+  it 'accepts an alternate block default referencing a defined format' do
     d = RichText::Delta.new([
       { insert: 'malus finis', attributes: { invalid: true } },
       { insert: "\n", attributes: { invalid: true } }
     ])
-    assert_equal '<div>malus finis</div>', render_compact_html(d, default_block_format: :div)
+    assert_equal '<h1>malus finis</h1>', render_compact_html(d, default_block_format: :firstheader)
   end
 
-  it 'renders object insertions' do
+  it 'accepts an alternate block default using a one-off tag name' do
+    d = RichText::Delta.new([
+      { insert: 'malus finis', attributes: { invalid: true } },
+      { insert: "\n", attributes: { invalid: true } }
+    ])
+    assert_equal '<div>malus finis</div>', render_compact_html(d, default_block_format: 'div')
+  end
+
+  it 'renders custom object insertions using apply function' do
     d = RichText::Delta.new([
       { insert: { image: { src: "https://placekitten.com/200/150" } } },
       { insert: "\n" }
     ])
 
-    assert_equal '<figure><img src="https://placekitten.com/200/150"/></figure>', render_compact_html(d)
-  end
-
-  it 'renders custom object insertions' do
-    d = RichText::Delta.new([
-      { insert: { oembed: { url: "https://www.youtube.com/watch?v=fd8tya7Gmv8" } } },
-      { insert: "\n" }
-    ])
-
     f = {
-      oembed: {
-        tag: 'iframe',
-        apply: ->(el, op) { el[:src] = op.value.dig(:oembed, :url) }
+      image: {
+        tag: 'img',
+        apply: ->(el, op, ctx){ el[:src] = op.value.dig(:image, :src) }
       }
     }
 
-    assert_equal '<p><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></p>', render_compact_html(d, inline_formats: f)
+    assert_equal '<p><img src="https://placekitten.com/200/150"/></p>', render_compact_html(d, inline_formats: f)
   end
 
-  it 'renders custom object insertions with special block formats' do
+  it 'renders object insertions with special block formats, referencing a known format' do
     d = RichText::Delta.new([
-      { insert: { oembed: { url: "https://www.youtube.com/watch?v=fd8tya7Gmv8" } } },
+      { insert: { image: { src: "https://placekitten.com/200/150" } } },
       { insert: "\n", attributes: { id: 'bingo' } }
     ])
 
     f = {
-      oembed: {
-        tag: 'iframe',
-        block_format: :div,
-        apply: ->(el, op) { el[:src] = op.value.dig(:oembed, :url) }
+      image: {
+        tag: 'img',
+        block_format: :firstheader,
+        apply: ->(el, op, ctx){ el[:src] = op.value.dig(:image, :src) }
       }
     }
 
-    assert_equal '<div id="bingo"><iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8"/></div>', render_compact_html(d, inline_formats: f)
+    assert_equal '<h1 id="bingo"><img src="https://placekitten.com/200/150"/></h1>', render_compact_html(d, inline_formats: f)
+  end
+
+  it 'renders custom object insertions with special block formats, using a custom tag' do
+    d = RichText::Delta.new([
+      { insert: { image: { src: "https://placekitten.com/200/150" } } },
+      { insert: "\n", attributes: { id: 'bingo' } }
+    ])
+
+    f = {
+      image: {
+        tag: 'img',
+        block_format: 'figure',
+        apply: ->(el, op, ctx){ el[:src] = op.value.dig(:image, :src) }
+      }
+    }
+
+    assert_equal '<figure id="bingo"><img src="https://placekitten.com/200/150"/></figure>', render_compact_html(d, inline_formats: f)
   end
 
   it 'renders custom object insertions with no block format' do
     d = RichText::Delta.new([
-      { insert: { oembed: { url: "https://www.youtube.com/watch?v=fd8tya7Gmv8" } } },
-      { insert: "\n", attributes: { id: 'bingo' } }
-    ])
-
-    f = {
-      oembed: {
-        tag: 'iframe',
-        block_format: false,
-        apply: ->(el, op) { el[:src] = op.value.dig(:oembed, :url) }
-      }
-    }
-
-    assert_equal '<iframe src="https://www.youtube.com/watch?v=fd8tya7Gmv8" id="bingo"/>', render_compact_html(d, inline_formats: f)
-  end
-
-  it 'renders custom object insertions with a build function' do
-    d = RichText::Delta.new([
-      { insert: { image: { src: "https://placekitten.com/200/150", credit: 'cuteness' } } },
+      { insert: { image: { src: "https://placekitten.com/200/150" } } },
       { insert: "\n", attributes: { id: 'bingo' } }
     ])
 
@@ -276,25 +227,42 @@ describe RichText::HTML do
       image: {
         tag: 'img',
         block_format: false,
-        build: ->(el, op) {
+        apply: ->(el, op, ctx){ el[:src] = op.value.dig(:image, :src) }
+      }
+    }
+
+    assert_equal '<img src="https://placekitten.com/200/150" id="bingo"/>', render_compact_html(d, inline_formats: f)
+  end
+
+  it 'renders custom object insertions with a build function' do
+    d = RichText::Delta.new([
+      { insert: { image: { src: "https://placekitten.com/200/150", caption: 'cuteness' } } },
+      { insert: "\n", attributes: { id: 'bingo' } }
+    ])
+
+    f = {
+      image: {
+        tag: 'img',
+        block_format: false,
+        build: ->(el, op, ctx) {
           el[:src] = op.value.dig(:image, :src)
-          el.wrap('<image/>')
+          el.wrap('<figure/>')
           el = el.parent
-          el.add_child("<cite>#{ op.value.dig(:image, :credit) }</cite>")
+          el.add_child("<figcaption>#{ op.value.dig(:image, :caption) }</figcaption>")
           el
         }
       }
     }
 
-    assert_equal '<image id="bingo"><img src="https://placekitten.com/200/150"/><cite>cuteness</cite></image>', render_compact_html(d, inline_formats: f)
+    assert_equal '<figure id="bingo"><img src="https://placekitten.com/200/150"/><figcaption>cuteness</figcaption></figure>', render_compact_html(d, inline_formats: f)
   end
 
   it 'renders custom object insertions into story flow' do
     d = RichText::Delta.new([
       { insert: 'before' },
       { insert: "\n" },
-      { insert: { image: { src: 'https://placekitten.com/200/150', credit: 'cuteness' } } },
-      { insert: "\n" },
+      { insert: { image: { src: 'https://placekitten.com/200/150', caption: 'cuteness' } } },
+      { insert: "\n", attributes: { id: 'bingo' } },
       { insert: 'after' },
       { insert: "\n" },
     ])
@@ -303,17 +271,68 @@ describe RichText::HTML do
       image: {
         tag: 'img',
         block_format: false,
-        build: ->(el, op) {
+        build: ->(el, op, ctx) {
           el[:src] = op.value.dig(:image, :src)
           el.wrap('<figure/>')
           el = el.parent
-          el.add_child("<cite>#{ op.value.dig(:image, :credit) }</cite>")
+          el.add_child("<figcaption>#{ op.value.dig(:image, :caption) }</figcaption>")
           el
         }
       }
     }
 
-    assert_equal '<p>before</p><figure><img src="https://placekitten.com/200/150"/><cite>cuteness</cite></figure><p>after</p>', render_compact_html(d, inline_formats: f)
+    assert_equal '<p>before</p><figure id="bingo"><img src="https://placekitten.com/200/150"/><figcaption>cuteness</figcaption></figure><p>after</p>', render_compact_html(d, inline_formats: f)
+  end
+
+  it 'renders nothing for build functions that return no element' do
+    d = RichText::Delta.new([
+      { insert: 'before' },
+      { insert: "\n" },
+      { insert: { image: { src: 'https://placekitten.com/200/150', caption: 'cuteness' } } },
+      { insert: "\n", attributes: { id: 'bingo' } },
+      { insert: 'after' },
+      { insert: "\n" },
+    ])
+
+    f = {
+      image: {
+        tag: 'img',
+        block_format: false,
+        build: ->(el, op, ctx) { nil }
+      }
+    }
+
+    assert_equal '<p>before</p><p>after</p>', render_compact_html(d, inline_formats: f)
+  end
+
+  it 'passes a render context argument to build and apply functions' do
+    d = RichText::Delta.new([
+      { insert: { image: { src: 'https://placekitten.com/200/150' } } },
+      { insert: "\n" },
+    ])
+
+    render_context = {}
+    build_context = nil
+    apply_context = nil
+
+    f = {
+      image: {
+        tag: 'img',
+        build: ->(el, op, ctx) { build_context = ctx; el },
+        apply: ->(el, op, ctx) { apply_context = ctx }
+      }
+    }
+
+    render_compact_html(d, render_context: render_context, inline_formats: {
+      image: {
+        tag: 'img',
+        build: ->(el, op, ctx) { build_context = ctx; el },
+        apply: ->(el, op, ctx) { apply_context = ctx }
+      }
+    })
+
+    assert_equal render_context.object_id, build_context.object_id
+    assert_equal render_context.object_id, apply_context.object_id
   end
 
   it 'gracefully handles missing newline ends' do
@@ -326,6 +345,6 @@ describe RichText::HTML do
   end
 
   def render_compact_html(delta, options={})
-    RichText::HTML.render_xml(delta, options).inner_html(save_with: 0)
+    RichText::HTML.new(RichText.config, options).render(delta).inner_html(save_with: 0)
   end
 end
