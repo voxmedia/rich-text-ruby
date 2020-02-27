@@ -452,14 +452,16 @@ module RichText
     # The behavior is not defined with non-insert operations.
     # @param embed_str [String] the string to use in place of non-string insert operations
     # @return [String]
-    def to_plaintext(embed_str: '!')
-      @ops.each_with_object('') do |op, str|
+    def to_plaintext
+      plaintext = @ops.each_with_object('') do |op, str|
         if op.insert?(String)
           str << op.value
-        elsif embed_str
-          str << embed_str
+        elsif block_given?
+          val = yield(op)
+          str << val if val.is_a?(String)
         end
       end
+      plaintext.strip.gsub(/[\n\r]+/, "\n")
     end
 
     # Returns an HTML representation of this delta.

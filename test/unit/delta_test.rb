@@ -154,6 +154,49 @@ describe RichText::Delta do
     end
   end
 
+  describe 'to_plaintext' do
+    it 'renders a string of plaintext' do
+      subject = RichText::Delta.new([
+        { insert: 'a man, ' },
+        { insert: 'a plan', attributes: { italic: true } },
+        { insert: ', ' },
+        { insert: 'panama', attributes: { bold: true } },
+        { insert: "\n" },
+        { insert: "visit!\n" },
+      ])
+      assert_equal("a man, a plan, panama\nvisit!", subject.to_plaintext)
+    end
+
+    it 'renders plaintext without objects and extra newlines' do
+      subject = RichText::Delta.new([
+        { insert: "kittens\n" },
+        { insert: { image: { src: 'https://placekitten.com/200/150' } } },
+        { insert: "\n" },
+        { insert: { oembed: { url: 'https://youtu.be/KaOC9danxNo' } } },
+        { insert: "\n" },
+        { insert: "in space\n" }
+      ])
+      assert_equal("kittens\nin space", subject.to_plaintext)
+    end
+
+    it 'renders plaintext with block handler for objects' do
+      subject = RichText::Delta.new([
+        { insert: "kittens\n" },
+        { insert: { image: { src: 'https://placekitten.com/200/150' } } },
+        { insert: "\n" },
+        { insert: { oembed: { url: 'https://youtu.be/KaOC9danxNo' } } },
+        { insert: "\n" },
+        { insert: "in space\n" }
+      ])
+      result = subject.to_plaintext do |op|
+        if op.value.key?(:image)
+          op.value[:image][:src]
+        end
+      end
+      assert_equal("kittens\nhttps://placekitten.com/200/150\nin space", result)
+    end
+  end
+
   # describe 'include?' do
   #   let(:haystack) { RichText::Delta.new.insert('abc').retain(3).delete(2) }
 
