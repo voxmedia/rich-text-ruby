@@ -461,7 +461,7 @@ module RichText
           str << val if val.is_a?(String)
         end
       end
-      plaintext.strip.gsub(/[\n\r]+/, "\n")
+      plaintext.strip
     end
 
     # Returns an HTML representation of this delta.

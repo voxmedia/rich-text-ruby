@@ -176,7 +176,7 @@ describe RichText::Delta do
         { insert: "\n" },
         { insert: "in space\n" }
       ])
-      assert_equal("kittens\nin space", subject.to_plaintext)
+      assert_equal("kittens\n\n\nin space", subject.to_plaintext)
     end
 
     it 'renders plaintext with block handler for objects' do
@@ -193,7 +193,7 @@ describe RichText::Delta do
           op.value[:image][:src]
         end
       end
-      assert_equal("kittens\nhttps://placekitten.com/200/150\nin space", result)
+      assert_equal("kittens\nhttps://placekitten.com/200/150\n\nin space", result)
     end
   end
 
