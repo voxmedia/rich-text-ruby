@@ -99,3 +99,153 @@ Retain operations have a Number `retain` key defined representing the number of 
 { retain: 5, attributes: { bold: null } }
 ```
 
+## HTML Formatting
+
+Rich-text deltas may be formatted as HTML by calling `delta.to_html`. The rendered markup will be generated based on formatting rules configured for the `RichText` module.
+
+### Inline formats
+
+Inline formatting rules are used to build tags for the flow of content elements.
+
+```ruby
+# Config:
+RichText.configure do |c|
+  c.html_default_block_format = 'p'
+  c.html_inline_formats = {
+    bold:        { tag: 'strong' },
+    italic:      { tag: 'em' },
+    br:          { tag: 'br' },
+    link:        { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } }
+  }
+end
+
+# Delta:
+[
+  { insert: "a man," },
+  { insert: "\n", attributes: { br: true } },
+  { insert: "a plan", attributes: { bold: true, italic: true } },
+  { insert: "\n" },
+  { insert: "panama\n", attributes: { link: 'https://visitpanama.com' } }
+]
+
+# HTML result:
+%(
+  <p>a man,<br><strong><em>a plan</em></strong></p>
+  <p><a href="https://visitpanama.com">panama</a></p>
+)
+```
+
+Each newline (`"\n"`) character will denote a block separation, at which time the inline flow will be wrapped in a block tag specified by the `html_default_block_format` setting. For soft or visible line breaks such as `br` or `hr` tags, you may give them inline formats. An inline element's block wrapper may be customized with a special tag, or none at all:
+
+```ruby
+# Config:
+RichText.configure do |c|
+  c.html_default_block_format = 'p'
+  c.html_inline_formats = {
+    hr:    { tag: 'hr', block_format: false },
+    code:  { tag: 'code', block_format: 'div' }
+  }
+end
+
+# Delta:
+[
+  { insert: "a man" },
+  { insert: "\n", attributes: { hr: true } },
+  { insert: "a_plan = true", attributes: { code: true } },
+  { insert: "\n" }
+]
+
+# HTML result:
+%(
+  <p>a man</p>
+  <hr>
+  <div><code>a_plan = true</code></div>
+)
+```
+
+### Block formats
+
+Block tags are wrapped around a flow of elements whenever a newline is encountered (unless it has an inline format). Block formats should always apply to newline (`"\n"`) inserts.
+
+```ruby
+RichText.configure do |c|
+  c.html_block_formats = {
+    firstheader: { tag: 'h1' },
+    bullet:      { tag: 'li', parent: 'ul' },
+    id:          { apply: ->(el, op, ctx){ el[:id] = op.attributes[:id] } }
+  }
+end
+
+# Delta:
+[
+  { insert: "Blocks are fun" },
+  { insert: "\n", attributes: { firstheader: true, id: 'blockfun' } },
+  { insert: "item 1" },
+  { insert: "\n", attributes: { bullet: true } },
+  { insert: "item 2" },
+  { insert: "\n", attributes: { bullet: true } }
+]
+
+# HTML result:
+%(
+  <h1 id="blockfun">Blocks are fun</h1>
+  <ul>
+    <li>item 1</li>
+    <li>item 2</li>
+  </ul>
+)
+```
+
+Block tags may define a `parent` tag, or an array of parents. When a block has a parent, its full parent tree is constructed and/or merged with a compatible node tree that preceeds it.
+
+### Formatting lambdas
+
+Use `build` and `apply` lambdas to customize tag structures.
+
+```ruby
+# Config:
+RichText.configure do |c|
+  c.html_default_block_format = 'p'
+  c.html_inline_formats = {
+    image: {
+      tag: 'img',
+      block_format: false,
+      build: ->(el, op, ctx){
+        el[:src] = op.value[:image][:src]
+        el.wrap('<figure/>')
+        el.after(%(<figcaption>#{ op.value[:image][:caption] }</figcaption>))
+        el.parent
+      }
+    },
+    link: {
+      tag: 'a',
+      apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] }
+    }
+  }
+end
+
+# Delta:
+[
+  { insert: { image: { src: 'https://placekitten.com/100/100', caption: 'cute' } } },
+  { insert: "\n" },
+  { insert: "more kittens", attributes: { link: 'https://placekitten.com' } },
+  { insert: "\n" }
+]
+
+# HTML result:
+%(
+  <figure>
+    <img src="https://placekitten.com/100/100">
+    <figcaption>cute</figcaption>
+  </figure>
+  <p><a href="https://placekitten.com">more kittens</a></p>
+)
+```
+
+A `build` lambda is called once when an element is created. The build lambda returns a customized node structure, or nil to render nothing. An `apply` lambda is called on each formatting rule applied to an element. An apply lambda does not return a value.
+
+**Both `build` and `apply` receive the same arguments:**
+
+- `el`: the new `Nokogiri::XML::Node` instance being rendered. Its tag type is already set by the formatting rule.
+- `op`: the `RichText::Op` instance being rendered. You may references its `attributes` and `value`.
+- `ctx`: an optional context object passed via `delta.to_html(render_context: obj)`. Providing a render context allows data to be shared across all formatting.
