@@ -335,6 +335,19 @@ describe RichText::HTML do
     assert_equal render_context.object_id, apply_context.object_id
   end
 
+  it 'applies tags then attributes, each ordered by priority' do
+    d = RichText::Delta.new([
+      { insert: "hitme\n", attributes: { attr2: true, tag2: true, attr1: true, tag1: true } }
+    ])
+
+    assert_equal '<p><second id="second"><first>hitme</first></second></p>', render_compact_html(d, inline_formats: {
+      tag1: { tag: 'first', priority: 1 },
+      tag2: { tag: 'second', priority: 2 },
+      attr1: { apply: ->(el, op, ctx){ el[:id] = 'first' }, priority: 1 },
+      attr2: { apply: ->(el, op, ctx){ el[:id] = 'second' }, priority: 2 },
+    })
+  end
+
   it 'gracefully handles missing newline ends' do
     d = RichText::Delta.new([
       { insert: 'mali principii' },
