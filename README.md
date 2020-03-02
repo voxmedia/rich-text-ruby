@@ -248,4 +248,4 @@ A `build` lambda is called once when an element is created. The build lambda ret
 
 - `el`: the new [Nokogiri::XML::Node](https://www.rubydoc.info/github/sparklemotion/nokogiri/Nokogiri/XML/Node) instance being rendered. Its tag type is already set by the formatting rule.
 - `op`: the `RichText::Op` instance being rendered. You may references its `attributes` and `value`.
-- `ctx`: an optional context object passed via `delta.to_html(render_context: obj)`. Providing a render context allows data to be shared across all formatting functions.
+- `ctx`: an optional context object passed via `delta.to_html(context: obj)`. Providing a render context allows data to be shared across all formatting functions.

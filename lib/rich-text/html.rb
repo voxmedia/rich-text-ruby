@@ -16,7 +16,7 @@ module RichText
       @default_block_format = options[:default_block_format] || config.html_default_block_format
       @inline_formats = config.html_inline_formats.merge(options[:inline_formats] || {})
       @block_formats = config.html_block_formats.merge(options[:block_formats] || {})
-      @context = options[:render_context]
+      @context = options[:context]
 
       @doc = Nokogiri::XML::Document.new
       @doc.encoding = 'UTF-8'
