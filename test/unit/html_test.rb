@@ -323,7 +323,7 @@ describe RichText::HTML do
       }
     }
 
-    render_compact_html(d, render_context: render_context, inline_formats: {
+    render_compact_html(d, context: render_context, inline_formats: {
       image: {
         tag: 'img',
         build: ->(el, op, ctx) { build_context = ctx; el },
@@ -358,6 +358,6 @@ describe RichText::HTML do
   end
 
   def render_compact_html(delta, options={})
-    RichText::HTML.new(RichText.config, options).render(delta).inner_html(save_with: 0)
+    RichText::HTML.new(options).render(delta).inner_html(save_with: 0)
   end
 end

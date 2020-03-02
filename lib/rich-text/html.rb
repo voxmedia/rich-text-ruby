@@ -7,12 +7,12 @@ module RichText
     ConfigError = Class.new(StandardError)
 
     def self.render(delta, options={})
-      new(RichText.config, options).render(delta).inner_html
+      new(options).render(delta).inner_html
     end
 
     attr_reader :doc
 
-    def initialize(config, options)
+    def initialize(options={}, config=RichText.config)
       @default_block_format = options[:default_block_format] || config.html_default_block_format
       @inline_formats = config.html_inline_formats.merge(options[:inline_formats] || {})
       @block_formats = config.html_block_formats.merge(options[:block_formats] || {})
