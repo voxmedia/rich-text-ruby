@@ -92,7 +92,8 @@ module RichText
 
     # renders a block for a collection of elements based on a final operation
     def render_block(op, elements, default_block_format=@default_block_format)
-      return unless elements.compact.any?
+      elements = elements.compact
+      return unless elements.any?
 
       # manually build block attributes to normalize malformed structures
       # assure that only block attributes are allowed to format blocks

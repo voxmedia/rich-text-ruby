@@ -135,7 +135,7 @@ end
 )
 ```
 
-Each newline (`"\n"`) character will denote a block separation, at which time the inline flow will be wrapped in a block tag specified by the `html_default_block_format` setting. For soft or visible line breaks such as `br` or `hr` tags, you may give them inline formats. An inline element's block wrapper may be customized with a special tag, or none at all:
+Each newline (`"\n"`) character denotes a block separation, at which time the inline flow will be wrapped in a block tag specified by `html_default_block_format`. An inline element's block wrapper maybe customized or omitted using the `block_format` setting. For soft or visible line breaks such as `br` or `hr` tags, you may assign them inline formats to render them as content flow.
 
 ```ruby
 # Config:
@@ -149,17 +149,17 @@ end
 
 # Delta:
 [
-  { insert: "a man" },
+  { insert: "sample code" },
   { insert: "\n", attributes: { hr: true } },
-  { insert: "a_plan = true", attributes: { code: true } },
+  { insert: "published = true", attributes: { code: true } },
   { insert: "\n" }
 ]
 
 # HTML result:
 %(
-  <p>a man</p>
+  <p>sample code</p>
   <hr>
-  <div><code>a_plan = true</code></div>
+  <div><code>published = true</code></div>
 )
 ```
 
@@ -246,6 +246,6 @@ A `build` lambda is called once when an element is created. The build lambda ret
 
 **Both `build` and `apply` receive the same arguments:**
 
-- `el`: the new `Nokogiri::XML::Node` instance being rendered. Its tag type is already set by the formatting rule.
+- `el`: the new [Nokogiri::XML::Node](https://www.rubydoc.info/github/sparklemotion/nokogiri/Nokogiri/XML/Node) instance being rendered. Its tag type is already set by the formatting rule.
 - `op`: the `RichText::Op` instance being rendered. You may references its `attributes` and `value`.
-- `ctx`: an optional context object passed via `delta.to_html(render_context: obj)`. Providing a render context allows data to be shared across all formatting.
+- `ctx`: an optional context object passed via `delta.to_html(render_context: obj)`. Providing a render context allows data to be shared across all formatting functions.
