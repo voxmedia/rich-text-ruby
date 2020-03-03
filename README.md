@@ -135,14 +135,14 @@ end
 )
 ```
 
-Each newline (`"\n"`) character denotes a block separation, at which time the inline flow will be wrapped in a block tag specified by `html_default_block_format`. An inline element's block wrapper maybe customized or omitted using the `block_format` setting. For soft or visible line breaks such as `br` or `hr` tags, you may assign them inline formats to render them as content flow.
+Each newline (`"\n"`) character denotes a block separation, at which time the inline flow will be wrapped in a block tag specified by `html_default_block_format`. An inline element's block wrapper maybe customized with the `block_format` setting, or omitted with the `unwrap_block` setting. For soft or visible line breaks such as `br` or `hr` tags, you may assign them inline formats to render them as content flow.
 
 ```ruby
 # Config:
 RichText.configure do |c|
   c.html_default_block_format = 'p'
   c.html_inline_formats = {
-    hr:    { tag: 'hr', block_format: false },
+    hr:    { tag: 'hr', unwrap_block: true },
     code:  { tag: 'code', block_format: 'div' }
   }
 end
@@ -200,7 +200,7 @@ Block tags may define a `parent` tag, or an array of parents. When a block has a
 
 ### Formatting lambdas
 
-Use `build` and `apply` lambdas to customize tag structures.
+Use `tag` and `apply` lambdas to customize tag structures.
 
 ```ruby
 # Config:
@@ -208,13 +208,12 @@ RichText.configure do |c|
   c.html_default_block_format = 'p'
   c.html_inline_formats = {
     image: {
-      tag: 'img',
-      block_format: false,
-      build: ->(el, op, ctx){
-        el[:src] = op.value[:image][:src]
-        el.wrap('<figure/>')
-        el.after(%(<figcaption>#{ op.value[:image][:caption] }</figcaption>))
-        el.parent
+      unwrap_block: true,
+      tag: ->(el, op, ctx){
+        el.name = 'figure'
+        el.add_child(%(<img src="#{ op.value[:image][:src] }">))
+        el.add_child(%(<figcaption>#{ op.value[:image][:caption] }</figcaption>))
+        el
       }
     },
     link: {
@@ -242,10 +241,10 @@ end
 )
 ```
 
-A `build` lambda is called once when an element is created. The build lambda returns a customized node structure, or nil to render nothing. An `apply` lambda is called on each formatting rule applied to an element. An apply lambda does not return a value.
+A `tag` lambda is called once when an element is created. The tag lambda returns a customized node structure, or nil to render nothing. An `apply` lambda is called for each formatting rule applied to an element. An apply lambda does not return a value.
 
-**Both `build` and `apply` receive the same arguments:**
+**Both `tag` and `apply` receive the same arguments:**
 
-- `el`: the new [Nokogiri::XML::Node](https://www.rubydoc.info/github/sparklemotion/nokogiri/Nokogiri/XML/Node) instance being rendered. Its tag type is already set by the formatting rule.
+- `el`: the [Nokogiri::XML::Node](https://www.rubydoc.info/github/sparklemotion/nokogiri/Nokogiri/XML/Node) instance being rendered. For `tag` lambdas, this will be a new `span`.
 - `op`: the `RichText::Op` instance being rendered. You may references its `attributes` and `value`.
 - `ctx`: an optional context object passed via `delta.to_html(context: obj)`. Providing a render context allows data to be shared across all formatting functions.

@@ -234,7 +234,7 @@ describe RichText::HTML do
     assert_equal '<img src="https://placekitten.com/200/150" id="bingo"/>', render_compact_html(d, inline_formats: f)
   end
 
-  it 'renders custom object insertions with a build function' do
+  it 'renders custom object insertions with a tag build function' do
     d = RichText::Delta.new([
       { insert: { image: { src: "https://placekitten.com/200/150", caption: 'cuteness' } } },
       { insert: "\n", attributes: { id: 'bingo' } }
@@ -242,13 +242,11 @@ describe RichText::HTML do
 
     f = {
       image: {
-        tag: 'img',
-        block_format: false,
-        build: ->(el, op, ctx) {
-          el[:src] = op.value.dig(:image, :src)
-          el.wrap('<figure/>')
-          el = el.parent
-          el.add_child("<figcaption>#{ op.value.dig(:image, :caption) }</figcaption>")
+        unwrap_block: true,
+        tag: ->(el, op, ctx) {
+          el.name = 'figure'
+          el.add_child(%(<img src="#{ op.value.dig(:image, :src) }">))
+          el.add_child(%(<figcaption>#{ op.value.dig(:image, :caption) }</figcaption>))
           el
         }
       }
@@ -269,13 +267,11 @@ describe RichText::HTML do
 
     f = {
       image: {
-        tag: 'img',
-        block_format: false,
-        build: ->(el, op, ctx) {
-          el[:src] = op.value.dig(:image, :src)
-          el.wrap('<figure/>')
-          el = el.parent
-          el.add_child("<figcaption>#{ op.value.dig(:image, :caption) }</figcaption>")
+        unwrap_block: true,
+        tag: ->(el, op, ctx) {
+          el.name = 'figure'
+          el.add_child(%(<img src="#{ op.value.dig(:image, :src) }">))
+          el.add_child(%(<figcaption>#{ op.value.dig(:image, :caption) }</figcaption>))
           el
         }
       }
@@ -296,9 +292,8 @@ describe RichText::HTML do
 
     f = {
       image: {
-        tag: 'img',
-        block_format: false,
-        build: ->(el, op, ctx) { nil }
+        unwrap_block: true,
+        tag: ->(el, op, ctx) { nil }
       }
     }
 
@@ -317,16 +312,14 @@ describe RichText::HTML do
 
     f = {
       image: {
-        tag: 'img',
-        build: ->(el, op, ctx) { build_context = ctx; el },
+        tag: ->(el, op, ctx) { build_context = ctx; el },
         apply: ->(el, op, ctx) { apply_context = ctx }
       }
     }
 
     render_compact_html(d, context: render_context, inline_formats: {
       image: {
-        tag: 'img',
-        build: ->(el, op, ctx) { build_context = ctx; el },
+        tag: ->(el, op, ctx) { build_context = ctx; el },
         apply: ->(el, op, ctx) { apply_context = ctx }
       }
     })

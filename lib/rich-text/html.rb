@@ -20,7 +20,7 @@ module RichText
 
       @doc = Nokogiri::XML::Document.new
       @doc.encoding = 'UTF-8'
-      @root = create_tag('main')
+      @root = create_node(tag: 'main')
     end
 
     def render(delta)
@@ -72,6 +72,7 @@ module RichText
         elsif op.value.is_a?(Hash) && key = @inline_formats.keys.detect { |k| op.value.key?(k) }
           format = @inline_formats[key.to_sym]
           new_block_format = format[:block_format] if format.key?(:block_format)
+          new_block_format = false if format[:unwrap_block]
           els << apply_format(format, op.value, op)
         end
 
@@ -161,7 +162,7 @@ module RichText
         # and/or merge into any trailing document structure that matches
         parents = [format[:parent]].flatten.each_with_object([]) do |tag, memo|
           scope = (memo.last || @root).children.last
-          node = scope && scope.name == tag ? scope : create_tag(tag)
+          node = scope && scope.name == tag ? scope : create_node(tag: tag)
           memo.last.add_child(node) if memo.last && node.parent != memo.last
           memo << node
         end
@@ -173,8 +174,10 @@ module RichText
       content
     end
 
-    def create_node(format={}, content=nil, tag:nil, op:nil, attr_value:nil)
-      el = Nokogiri::XML::Node.new(tag || format[:tag], @doc)
+    def create_node(format={}, content=nil, tag:nil, op:nil)
+      tag ||= format[:tag]
+      tag = 'span' if tag.respond_to?(:call)
+      el = Nokogiri::XML::Node.new(tag, @doc)
 
       if content.is_a?(String)
         el.content = content
@@ -184,15 +187,11 @@ module RichText
         content.each { |n| el.add_child(n) }
       end
 
-      if format[:build].respond_to?(:call) && op
-        el = format[:build].call(el, op, @context)
+      if format[:tag].respond_to?(:call) && op
+        el = format[:tag].call(el, op, @context)
       end
 
       el
-    end
-
-    def create_tag(name)
-      create_node(tag: name)
     end
 
   end
