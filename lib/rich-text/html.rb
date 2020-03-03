@@ -72,7 +72,7 @@ module RichText
         elsif op.value.is_a?(Hash) && key = @inline_formats.keys.detect { |k| op.value.key?(k) }
           format = @inline_formats[key.to_sym]
           new_block_format = format[:block_format] if format.key?(:block_format)
-          new_block_format = false if format[:unwrap_block]
+          new_block_format = false if format[:omit_block]
           els << apply_format(format, op.value, op)
         end
 

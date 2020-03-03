@@ -135,14 +135,14 @@ end
 )
 ```
 
-Each newline (`"\n"`) character denotes a block separation, at which time the inline flow will be wrapped in a block tag specified by `html_default_block_format`. An inline element's block wrapper maybe customized with the `block_format` setting, or omitted with the `unwrap_block` setting. For soft or visible line breaks such as `br` or `hr` tags, you may assign them inline formats to render them as content flow.
+Each newline (`"\n"`) character denotes a block separation, at which time the inline flow will be wrapped in a block tag specified by `html_default_block_format`. An inline element's block wrapper maybe customized with the `block_format` setting, or omitted with the `omit_block` setting. For soft or visible line breaks such as `br` or `hr` tags, you may assign them inline formats to render them as content flow.
 
 ```ruby
 # Config:
 RichText.configure do |c|
   c.html_default_block_format = 'p'
   c.html_inline_formats = {
-    hr:    { tag: 'hr', unwrap_block: true },
+    hr:    { tag: 'hr', omit_block: true },
     code:  { tag: 'code', block_format: 'div' }
   }
 end
@@ -208,7 +208,7 @@ RichText.configure do |c|
   c.html_default_block_format = 'p'
   c.html_inline_formats = {
     image: {
-      unwrap_block: true,
+      omit_block: true,
       tag: ->(el, op, ctx){
         el.name = 'figure'
         el.add_child(%(<img src="#{ op.value[:image][:src] }">))

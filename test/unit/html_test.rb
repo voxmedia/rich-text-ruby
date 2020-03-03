@@ -242,7 +242,7 @@ describe RichText::HTML do
 
     f = {
       image: {
-        unwrap_block: true,
+        omit_block: true,
         tag: ->(el, op, ctx) {
           el.name = 'figure'
           el.add_child(%(<img src="#{ op.value.dig(:image, :src) }">))
@@ -267,7 +267,7 @@ describe RichText::HTML do
 
     f = {
       image: {
-        unwrap_block: true,
+        omit_block: true,
         tag: ->(el, op, ctx) {
           el.name = 'figure'
           el.add_child(%(<img src="#{ op.value.dig(:image, :src) }">))
@@ -292,7 +292,7 @@ describe RichText::HTML do
 
     f = {
       image: {
-        unwrap_block: true,
+        omit_block: true,
         tag: ->(el, op, ctx) { nil }
       }
     }
