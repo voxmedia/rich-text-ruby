@@ -6,59 +6,76 @@ module RichText
   class HTML
     ConfigError = Class.new(StandardError)
 
-    def self.render_xml(delta, options={})
-      new(RichText.config, options).render(delta)
-    end
-
     def self.render(delta, options={})
-      render_xml(delta, options).inner_html
+      new(options).render(delta)
     end
 
-    attr_reader :doc, :root
-
-    def initialize(config, options)
-      @default_block_format = options[:default_block_format] || config.html_default_block_format
-      @formats = config.html_formats.merge(options[:formats] || {})
-      @inline_formats = Hash[@formats.select { |k, v| !v.key?(:type) || v[:type] == :inline }]
-      @block_formats = Hash[@formats.select { |k, v| v[:type] == :block }]
-
-      @doc = Nokogiri::XML::Document.new
-      @doc.encoding = 'UTF-8'
-      @root = create_tag('main')
+    def initialize(options)
+      @default_block_format = options[:default_block_format] || RichText.config.html_default_block_format
+      @block_formats = RichText.config.html_block_formats.merge(options[:block_formats] || {})
+      @inline_formats = RichText.config.html_inline_formats.merge(options[:inline_formats] || {})
+      @embed_formats = RichText.config.html_embed_formats.merge(options[:embed_formats] || {})
+      @formats = @block_formats.merge(@inline_formats).merge(@embed_formats)
     end
 
     def render(delta)
       raise TypeError.new("cannot convert retain or delete ops to html") unless delta.insert_only?
 
-      render_lines = []
+      @doc = Nokogiri::XML::Document.new
+      @doc.encoding = 'UTF-8'
+      @root = create_tag('main')
 
-      # loop through each delta line and group together inline separators.
-      # a delta line ends at each newline character with indifference,
-      # while a render line may choose to group some newlines (like "br" tags).
       delta.each_line do |line|
-        next unless line.ops.any?
+        root << 'p'
+        line.each_op do |op|
+          el = doc.create_text_node(op.value)
+          op.attributes.each do |key, value|
+            next unless @inline_formats[key]
+            tag, parent_tag, apply = *@formats[key].values_at(:tag, :parent_tag, :apply)
+            el = el.wrap("<#{tag}></#{tag}>").parent if tag
+            el = el.wrap("<#{parent_tag}></#{parent_tag}>").parent if parent_tag
+            el = formats[key][:apply](el, op) if apply
+          end
 
-        if render_lines.any? && inline_tag?(render_lines.last.last)
-          # merge inlined return into previous render line
-          render_lines.last.push(*line.ops)
-        else
-          render_lines.push(line.ops.dup)
+          if block_element?(el)
+            @root << line
+            @root << el
+            line = @doc.create_element 'p'
+          else
+            line << el
+          end
         end
       end
 
-      render_lines.each { |ops| render_line(ops) }
-      @root
+      # render_lines = []
+
+      # # loop through each delta line and group together inline separators.
+      # # a delta line ends at each newline character with indifference,
+      # # while a render line may choose to group some newlines (like "br" tags).
+      # delta.each_line do |line|
+      #   next unless line.ops.any?
+
+      #   if render_lines.any? && inline_tag?(render_lines.last.last)
+      #     # merge inlined return into previous render line
+      #     render_lines.last.push(*line.ops)
+      #   else
+      #     render_lines.push(line.ops.dup)
+      #   end
+      # end
+
+      # render_lines.each { |ops| render_line(ops) }
+      @root.inner_html
     end
 
   private
 
     def inline_tag?(op)
-      op.attributes.keys.find { |k| @inline_formats[k.to_sym]&.key?(:tag) }
+      op.attributes.keys.any? { |k| @inline_formats[k.to_sym]&.key?(:tag) }
     end
 
     # renders a single line of operations
     def render_line(ops)
-      current_block_format = @default_block_format.to_sym
+      current_block_format = @default_block_format
       new_block_format = current_block_format
 
       # Render all inline operations with defined formats
@@ -66,9 +83,9 @@ module RichText
       elements = ops.reduce([]) do |els, op|
         # String insert
         if op.value.is_a?(String)
-          value = op.value.sub(/\n$/, '')
+          value = op.value.chomp
           if value.length > 0 || inline_tag?(op)
-            new_block_format = @default_block_format.to_sym
+            new_block_format = @default_block_format
             els << apply_formats(@inline_formats, value, op)
           end
 
@@ -178,10 +195,6 @@ module RichText
         el.add_child(content)
       elsif content.is_a?(Array)
         content.each { |n| el.add_child(n) }
-      end
-
-      if format[:build].respond_to?(:call) && op
-        el = format[:build].call(el, op)
       end
 
       el
