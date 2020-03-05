@@ -14,18 +14,24 @@ require 'rich-text/delta'
 require 'rich-text/html'
 
 RichText.configure do |c|
+
+  c.html_inline_formats = {
+    bold:           { tag: 'strong' },
+    br:             { tag: 'br' },
+    hr:             { tag: 'hr', block_format: false },
+    italic:         { tag: 'em' },
+    link:           { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } }
+  }
+
+  c.html_block_formats = {
+    firstheader:    { tag: 'h1' },
+    secondheader:   { tag: 'h2' },
+    thirdheader:    { tag: 'h3' },
+    bullet:         { tag: 'li', parent: 'ul' },
+    list:           { tag: 'li', parent: 'ol' },
+    id:             { apply: ->(el, op, ctx){ el[:id] = op.attributes[:id] } }
+  }
+
+  c.html_default_block_format = 'p'
   c.safe_mode = true
-  c.html_default_block_tag = 'p'
-  c.html_block_tags = {
-    firstheader: 'h1',
-    secondheader: 'h2',
-    thirdheader: 'h3',
-    list: ->(content, value) { %(<ol><li>#{value}</li></ol>) },
-    bullet: ->(content, value) { %(<ul><li>#{value}</li></ul>) }
-  }
-  c.html_inline_tags = {
-    bold: 'strong',
-    italic: 'em',
-    link: ->(content, value) { %(<a href="#{value}">#{content}</a>) }
-  }
 end
