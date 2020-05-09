@@ -24,6 +24,7 @@ RichText.configure do |c|
   }
 
   c.html_block_formats = {
+    align:          { apply: ->(el, op, ctx) { el[:style] = "text-align: #{op.attributes[:align]}" } },
     firstheader:    { tag: 'h1' },
     secondheader:   { tag: 'h2' },
     thirdheader:    { tag: 'h3' },

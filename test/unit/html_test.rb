@@ -11,6 +11,7 @@ describe RichText::HTML do
       }.freeze
 
       c.html_block_formats = {
+        align:          { apply: ->(el, op, ctx) { el[:style] = "text-align: #{op.attributes[:align]}" } },
         firstheader:    { tag: 'h1' },
         secondheader:   { tag: 'h2' },
         thirdheader:    { tag: 'h3' },
@@ -348,6 +349,16 @@ describe RichText::HTML do
       { insert: 'malus finis', attributes: { invalid: true } }
     ])
     assert_equal '<p>mali principii</p><p>malus finis</p>', render_compact_html(d)
+  end
+
+  it 'renders a paragraph with alignment' do
+    d = RichText::Delta.new([{ insert: "dextra", attributes: { align: "right"}}])
+    assert_equal '<p style="text-align: right">dextra</p>', render_compact_html(d)
+  end
+
+  it 'renders a header with alignment' do
+    d = RichText::Delta.new([{ insert: "dextra", attributes: { align: "right", firstheader: true }}])
+    assert_equal '<h1 style="text-align: right">dextra</h1>', render_compact_html(d)
   end
 
   def render_compact_html(delta, options={})
