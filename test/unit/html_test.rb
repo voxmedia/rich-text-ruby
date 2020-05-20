@@ -7,10 +7,14 @@ describe RichText::HTML do
         bold:           { tag: 'strong' },
         br:             { tag: 'br' },
         italic:         { tag: 'em' },
-        link:           { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } }
+        link:           { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } },
+        size:           { tag: 'span', apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "font-size: #{op.attributes[:size]};" } },
+        color:          { tag: 'span', apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "color: #{op.attributes[:color]};" } },
+        background:     { tag: 'span', apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "background: #{op.attributes[:background]};" } },
       }.freeze
 
       c.html_block_formats = {
+        align:          { apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "text-align: #{op.attributes[:align]};" } },
         firstheader:    { tag: 'h1' },
         secondheader:   { tag: 'h2' },
         thirdheader:    { tag: 'h3' },
@@ -348,6 +352,32 @@ describe RichText::HTML do
       { insert: 'malus finis', attributes: { invalid: true } }
     ])
     assert_equal '<p>mali principii</p><p>malus finis</p>', render_compact_html(d)
+  end
+
+  it 'renders a paragraph with alignment' do
+    d = RichText::Delta.new([{ insert: "dextra", attributes: { align: "right"}}])
+    assert_equal '<p style="text-align: right;">dextra</p>', render_compact_html(d)
+  end
+
+  it 'renders a header with alignment' do
+    d = RichText::Delta.new([{ insert: "dextra", attributes: { align: "right", firstheader: true }}])
+    assert_equal '<h1 style="text-align: right;">dextra</h1>', render_compact_html(d)
+  end
+
+  it 'renders a paragraph with colors' do
+    d = RichText::Delta.new([{ insert: "red balloon in blue sky", attributes: { color: "#ff0000", background: "#0000ff" }}])
+    assert_equal '<p style="color: #ff0000;background: #0000ff;">red balloon in blue sky</p>', render_compact_html(d)
+  end
+
+  it 'renders a paragraph with many attributes' do
+    d = RichText::Delta.new([{ insert: "hello\n" }, { insert: "goodbye\n" }])
+    d = RichText::Delta.new([{"attributes"=>{"color"=>"#e60000", "background"=>"#ffff00", "size"=>"21px"}, "insert"=>"hello"}, {"attributes"=>{"bold" => true, "align"=>"left", size: "10px"}, "insert"=>"world"}])
+    assert_equal '<p style="text-align: left;"><span style="font-size: 21px;background: #ffff00;color:#e60000">hello</span><span style=\"font-size: 10px;\"><strong>world</strong></span></p>', render_compact_html(d)
+  end
+
+  it 'renders a paragraph with size' do
+    d = RichText::Delta.new([{ insert: "big text", attributes: { size: "50px" }}])
+    assert_equal '<p style="font-size: 50px;">big text</p>', render_compact_html(d)
   end
 
   def render_compact_html(delta, options={})

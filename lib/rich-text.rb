@@ -15,15 +15,19 @@ require 'rich-text/html'
 
 RichText.configure do |c|
 
-  c.html_inline_formats = {
+  c.html_inline_formats ||= {
     bold:           { tag: 'strong' },
     br:             { tag: 'br' },
     hr:             { tag: 'hr', block_format: false },
     italic:         { tag: 'em' },
-    link:           { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } }
+    link:           { tag: 'a', apply: ->(el, op, ctx){ el[:href] = op.attributes[:link] } },
+    size:           { tag: 'span', apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "font-size: #{op.attributes[:size]};" } },
+    color:          { tag: 'span', apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "color: #{op.attributes[:color]};" } },
+    background:     { tag: 'span', apply: ->(el, op, ctx) { el[:style] = el[:style].to_s + "background: #{op.attributes[:background]};" } },
   }
 
-  c.html_block_formats = {
+  c.html_block_formats ||= {
+    align:          { apply: ->(el, op, ctx) { el[:style] = "text-align: #{op.attributes[:align]}" } },
     firstheader:    { tag: 'h1' },
     secondheader:   { tag: 'h2' },
     thirdheader:    { tag: 'h3' },
