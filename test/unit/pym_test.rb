@@ -33,6 +33,6 @@ describe RichText::HTML do
   end
 
   def render_compact_html(delta, options={})
-    PymAwareBuilder.new.render(delta)
+    PymAwareBuilder.new.render(delta).gsub("\n", "")
   end
 end
