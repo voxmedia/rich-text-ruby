@@ -10,7 +10,12 @@ class PymAwareBuilder < Object
     el.name = 'div'
     el.add_class('pym')
     el.add_child(%(<p data-pym-src="#{ pym[:url] }"><a href="#{ pym[:url] }">Don't see the graphic? Click here.</a></p>))
-    el.add_child(%(<script async type="text/javascript" src="https://pym.nprapps.org/pym.v1.min.js"></script>))
+    el.add_child(%(<script></script>))
+    script = el.children.last
+    script['async'] = nil
+    script.attributes['async'].value = nil
+    script['type'] = "text/javascript"
+    script['src'] = "https://pym.nprapps.org/pym.v1.min.js"
     el
   end
 end
