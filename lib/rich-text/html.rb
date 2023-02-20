@@ -157,10 +157,16 @@ module RichText
       end
 
       if format[:parent]
+        parent = if format[:parent].respond_to?(:call)
+          format[:parent].call(op, @context)
+        else
+          format[:parent]
+        end
+
         # build wrapper into a hierarchy of parents
         # ex: %w[table tbody tr] will build ancestors,
         # and/or merge into any trailing document structure that matches
-        parents = [format[:parent]].flatten.each_with_object([]) do |tag, memo|
+        parents = [parent].flatten.each_with_object([]) do |tag, memo|
           scope = (memo.last || @root).children.last
           node = scope && scope.name == tag ? scope : create_node(tag: tag)
           memo.last.add_child(node) if memo.last && node.parent != memo.last
