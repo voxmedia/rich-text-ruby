@@ -85,6 +85,38 @@ describe RichText::HTML do
     assert_equal '<ul><li>a man</li><li>a plan</li><li>panama</li></ul>', render_compact_html(d)
   end
 
+  describe 'when parent is a lambda' do
+    before do
+      RichText.configure do |c|
+        c.html_block_formats = {
+          list: {
+            tag: 'li',
+            parent: lambda { |op, _ctx|
+              if op.attributes[:list] == 'ordered'
+                'ol'
+              else
+                'ul'
+              end
+            }
+          }
+        }
+        c.html_default_block_format = 'p'
+      end
+    end
+
+    it 'renders blocks with parent elements' do
+      d = RichText::Delta.new([
+        { insert: 'a man' },
+        { insert: "\n", attributes: { list: 'bullet' } },
+        { insert: 'a plan' },
+        { insert: "\n", attributes: { list: 'ordered' } },
+        { insert: 'panama' },
+        { insert: "\n", attributes: { list: 'ordered' } }
+      ])
+      assert_equal '<ul><li>a man</li></ul><ol><li>a plan</li><li>panama</li></ol>', render_compact_html(d)
+    end
+  end
+
   it 'renders properly merged parent sets' do
     d = RichText::Delta.new([
       { insert: 'helium' },
